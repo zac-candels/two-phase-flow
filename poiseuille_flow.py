@@ -2,6 +2,10 @@ import fenics as fe
 import numpy as np
 import matplotlib.pyplot as plt
 
+# NOTE, IF NOT USING VARIATIONAL FORM NOTATION (ie F(.,.) = ),
+# THEN NON-TRIAL/TEST FUNCTIONS CANNOT APPEAR IN BILINEAR FORM,
+# ONLY IN LINEAR FORMS.
+
 # Define physical parameters
 T = 10.0
 num_steps = 500
@@ -66,12 +70,13 @@ def sigma(u, p):
 
 
 # Bilinear and linear forms, step 1
-a1 = rho*(1/k)*fe.dot(u_star - u_n, v)*fe.dx 
-#a1 = rho*(1/k)*fe.dot( (u_star - u_n), v)*fe.dx
+a1 = rho*(1/k)*fe.dot(u_star, v)*fe.dx 
+#a1 = rho*(1/k)*fe.dot( u_star, v )*fe.dx
     # + fe.inner( sigma(U_cn, p_n), fe.nabla_grad(v) )*fe.dx\
     #         - mu*fe.dot( fe.nabla_grad(U_cn)*n , v)*fe.ds\
                 
-L1 = rho*fe.dot( fe.dot( u_n, fe.grad(u_n) ), v)*fe.dx + fe.dot(p_n*n, v)*fe.dx
+L1 = rho*(1/k)*fe.dot(u_n,v)*fe.dx\
+    + rho*fe.dot( fe.dot( u_n, fe.grad(u_n) ), v)*fe.dx + fe.dot(p_n*n, v)*fe.dx
 
 # Bilinear and linear forms, step 2
 a2 = fe.dot(fe.nabla_grad(p_np1), fe.nabla_grad(q) )*fe.dx
