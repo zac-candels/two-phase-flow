@@ -70,60 +70,107 @@ def sigma(u, p):
 
 
 # Bilinear and linear forms, step 1
-a1 = rho*(1/k)*fe.dot(u_star, v)*fe.dx 
-#a1 = rho*(1/k)*fe.dot( u_star, v )*fe.dx
-    # + fe.inner( sigma(U_cn, p_n), fe.nabla_grad(v) )*fe.dx\
-    #         - mu*fe.dot( fe.nabla_grad(U_cn)*n , v)*fe.ds\
+a1 = rho*(1/k)*fe.dot( u_star, v )*fe.dx\
+     + fe.inner( 0.5*mu*epsilon(u_star), fe.nabla_grad(v) )*fe.dx\
+             - mu*fe.dot( (1/2)*fe.nabla_grad(u_star)*n , v)*fe.ds\
                 
 L1 = rho*(1/k)*fe.dot(u_n,v)*fe.dx\
-    + rho*fe.dot( fe.dot( u_n, fe.grad(u_n) ), v)*fe.dx + fe.dot(p_n*n, v)*fe.dx
+    + rho*fe.dot( fe.dot( u_n, fe.grad(u_n) ), v)*fe.dx\
+        + fe.dot(p_n*n, v)*fe.ds\
+            + (1/2)*fe.inner( p_n*fe.Identity( len(u_n) ),\
+                             fe.nabla_grad(v) )*fe.dx\
+                + fe.inner( 0.5*mu*epsilon(u_n), fe.nabla_grad(v) )*fe.dx\
+                    + mu*fe.dot( (1/2)*fe.nabla_grad(u_n)*n , v)*fe.ds\
+        
 
 # Bilinear and linear forms, step 2
 a2 = fe.dot(fe.nabla_grad(p_np1), fe.nabla_grad(q) )*fe.dx
 L2 = fe.dot(fe.nabla_grad(p_n), fe.nabla_grad(q) )*fe.dx\
-    - (1/dt)*fe.div(u_star_jc)*q*fe.dx 
+     - (1/dt)*fe.div(u_star_jc)*q*fe.dx 
     
-# Bilinear and linear forms, step 3
+# # Bilinear and linear forms, step 3
 a3 = rho*(1/k)*fe.dot( u_np1, v )*fe.dx
 L3 = fe.dot(u_star_jc, v)*fe.dx\
-    -dt*fe.dot( ( fe.grad(p_jc) - fe.grad(p_n) ), v)*fe.dx
+     -dt*fe.dot( ( fe.grad(p_jc) - fe.grad(p_n) ), v)*fe.dx
        
     
 # Assemble matrices
-A1 = fe.assemble(a1)
+A1 = fe.assemble(a1) 
 A2 = fe.assemble(a2)
 A3 = fe.assemble(a3)
 
-# # Apply BCs to matrices
-# [bc.apply(A1) for bc in bcu]
-# [bc.apply(A2) for bc in bcp]
+b1 = fe.assemble(L1)
+b2 = fe.assemble(L2)
+b3 = fe.assemble(L3)
 
-# # Time-stepping
-# t = 0
-# for n in range(num_steps):
-    
-#     # Update current time
-#     t += dt
-    
-#     # Step 1: Compute tentative velocity
-#     b1 = fe.assemble(L1)
-#     [bc.apply(b1) for bc in bcu]
-    
-#     fe.solve(A1, u_star_jc.vector(), b1)
-    
-#     # Step 2: Pressure correction
-#     b2 = fe.assemble(L2)
-#     [bc.apply(b2) for bc in bcp]
-    
-#     fe.solve(A2, p_jc.vector(), b2)
-    
-    
-#     # Step 3: Compute updated velocity
-#     b3 = fe.assemble(L3)
-#     fe.solve(A3, u_np1_jc.vector(), b3)
-    
-#     u_n.assign(u_np1_jc)
-#     p_n.assign(p_jc)
+# Apply BCs to matrices
+[bc.apply(A1) for bc in bcu]
+[bc.apply(A2) for bc in bcp]
 
+# Time-stepping
+t = 0
+for n in range(num_steps):
+    
+    # Update current time
+    t += dt
+    
+    # Step 1: Compute tentative velocity
+    b1 = fe.assemble(L1)
+    [bc.apply(b1) for bc in bcu]
+    
+    fe.solve(A1, u_star_jc.vector(), b1)
+    
+    # Step 2: Pressure correction
+    b2 = fe.assemble(L2)
+    [bc.apply(b2) for bc in bcp]
+    
+    fe.solve(A2, p_jc.vector(), b2)
+    
+    
+    # Step 3: Compute updated velocity
+    b3 = fe.assemble(L3)
+    fe.solve(A3, u_np1_jc.vector(), b3)
+    
+    u_n.assign(u_np1_jc)
+    p_n.assign(p_jc)
+
+# Plot velocity field with larger arrows
+# Plot velocity field with larger arrows
+coords = V.tabulate_dof_coordinates()[::2]  # Shape: (1056, 2)
+u_values = u_n.vector().get_local().reshape((V.dim() // 2, 2))  # Shape: (1056, 2)
+x = coords[:, 0]  # x-coordinates
+y = coords[:, 1]  # y-coordinates
+u_x = u_values[:, 0]  # x-components of velocity
+u_y = u_values[:, 1]  # y-components of velocity
+
+# Define arrow scale based on maximum velocity
+max_u = np.max(np.sqrt(u_x**2 + u_y**2))
+arrow_length = 0.05  # 5% of domain size
+scale = max_u / arrow_length if max_u > 0 else 1
+
+# Create quiver plot
+plt.figure()
+M = np.hypot(u_x, u_y)
+plt.quiver(x, y, u_x, u_y, M, scale=scale, scale_units='height')
+plt.title("Velocity field at final time")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()
+
+# Plot velocity profile at x=0.5 (unchanged, assuming it works)
+num_points = 100
+y_values = np.linspace(0, 1, num_points)
+x_fixed = 0.5
+points = [(x_fixed, y) for y in y_values]
+u_x_values = []
+for point in points:
+    u_at_point = u_n(point)
+    u_x_values.append(u_at_point[0])
+plt.figure()
+plt.plot(u_x_values, y_values)
+plt.xlabel("u_x")
+plt.ylabel("y")
+plt.title("Velocity profile at x=0.5")
+plt.show()
 
 
