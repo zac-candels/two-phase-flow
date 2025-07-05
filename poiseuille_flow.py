@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 # THEN NON-TRIAL/TEST FUNCTIONS CANNOT APPEAR IN BILINEAR FORM,
 # ONLY IN LINEAR FORMS.
 
+plt.close('all')
+
 # Define physical parameters
 T = 10.0
 num_steps = 500
@@ -18,13 +20,14 @@ H = 1.0 # channel height
 nx = 10
 ny = nx
 mesh = fe.RectangleMesh(fe.Point(0,0), fe.Point(L_x, H), nx, ny)
+mesh = fe.UnitSquareMesh(16, 16)
 
 V = fe.VectorFunctionSpace(mesh, "P", 2)
 Q = fe.FunctionSpace(mesh, "P", 1)
 
 # Define boundaries 
 inflow = "near(x[0], 0)" # ie inflow boundary at x[0] = 0(ie x=0)
-outflow = "near(x[0], 4.0)" # ie outflow boundary
+outflow = "near(x[0], 1.0)" # ie outflow boundary
 no_slip = "near(x[1], 0.0) || near(x[1], 1.0)" # For no-slip at walls
 
 
@@ -71,27 +74,27 @@ def sigma(u, p):
 
 # Bilinear and linear forms, step 1
 a1 = rho*(1/k)*fe.dot( u_star, v )*fe.dx\
-     + fe.inner( 0.5*mu*epsilon(u_star), fe.nabla_grad(v) )*fe.dx\
-             - mu*fe.dot( (1/2)*fe.nabla_grad(u_star)*n , v)*fe.ds\
+     + fe.inner( mu*epsilon(u_star), fe.nabla_grad(v) )*fe.dx\
+             - 0.5*mu*fe.dot( fe.nabla_grad(u_star)*n , v)*fe.ds\
                 
 L1 = rho*(1/k)*fe.dot(u_n,v)*fe.dx\
-    + rho*fe.dot( fe.dot( u_n, fe.grad(u_n) ), v)*fe.dx\
+    - rho*fe.dot( fe.dot( u_n, fe.nabla_grad(u_n) ), v)*fe.dx\
         + fe.dot(p_n*n, v)*fe.ds\
-            + (1/2)*fe.inner( p_n*fe.Identity( len(u_n) ),\
+            - fe.inner( mu*epsilon(u_n), fe.nabla_grad(v) )*fe.dx\
+            + fe.inner( p_n*fe.Identity( len(u_n) ),\
                              fe.nabla_grad(v) )*fe.dx\
-                + fe.inner( 0.5*mu*epsilon(u_n), fe.nabla_grad(v) )*fe.dx\
-                    + mu*fe.dot( (1/2)*fe.nabla_grad(u_n)*n , v)*fe.ds\
+                    + 0.5*mu*fe.dot( fe.nabla_grad(u_n)*n , v)*fe.ds\
         
 
 # Bilinear and linear forms, step 2
 a2 = fe.dot(fe.nabla_grad(p_np1), fe.nabla_grad(q) )*fe.dx
 L2 = fe.dot(fe.nabla_grad(p_n), fe.nabla_grad(q) )*fe.dx\
-     - (1/dt)*fe.div(u_star_jc)*q*fe.dx 
+     - (rho/dt)*fe.div(u_star_jc)*q*fe.dx 
     
 # # Bilinear and linear forms, step 3
 a3 = rho*(1/k)*fe.dot( u_np1, v )*fe.dx
-L3 = fe.dot(u_star_jc, v)*fe.dx\
-     -dt*fe.dot( ( fe.grad(p_jc) - fe.grad(p_n) ), v)*fe.dx
+L3 = rho*fe.dot(u_star_jc, v)*fe.dx\
+     -dt*fe.dot( ( fe.nabla_grad(p_jc - p_n) ), v)*fe.dx
        
     
 # Assemble matrices
