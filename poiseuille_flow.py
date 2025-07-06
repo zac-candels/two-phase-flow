@@ -17,10 +17,10 @@ mu = 1
 
 L_x = 4.0
 H = 1.0 # channel height
-nx = 10
+nx = 20
 ny = nx
-#mesh = fe.RectangleMesh(fe.Point(0,0), fe.Point(L_x, H), nx, ny)
-mesh = fe.UnitSquareMesh(16, 16)
+mesh = fe.RectangleMesh(fe.Point(0,0), fe.Point(L_x, H), nx, ny)
+#mesh = fe.UnitSquareMesh(16, 16)
 
 V = fe.VectorFunctionSpace(mesh, "P", 2)
 Q = fe.FunctionSpace(mesh, "P", 1)
@@ -89,11 +89,11 @@ L1 = rho*(1/k)*fe.dot(u_n,v)*fe.dx\
 # Bilinear and linear forms, step 2
 a2 = fe.dot(fe.nabla_grad(p_np1), fe.nabla_grad(q) )*fe.dx
 L2 = fe.dot(fe.nabla_grad(p_n), fe.nabla_grad(q) )*fe.dx\
-     - (1/k)*fe.div(u_star_jc)*q*fe.dx 
+     - (rho/k)*fe.div(u_star_jc)*q*fe.dx 
     
 # # Bilinear and linear forms, step 3
-a3 = fe.dot( u_np1, v )*fe.dx
-L3 = fe.dot(u_star_jc, v)*fe.dx\
+a3 = rho*fe.dot( u_np1, v )*fe.dx
+L3 = rho*fe.dot(u_star_jc, v)*fe.dx\
      -k*fe.dot( ( fe.nabla_grad(p_jc - p_n) ), v)*fe.dx
        
     
