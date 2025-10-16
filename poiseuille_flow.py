@@ -15,11 +15,11 @@ dt = T/num_steps
 rho = 1
 mu = 1
 
-L_x = 4.0
-H = 1.0 # channel height
-nx = 20
+L_x = 1.0
+L_y = 1.0 # channel height
+nx = 5
 ny = nx
-mesh = fe.RectangleMesh(fe.Point(0,0), fe.Point(L_x, H), nx, ny)
+mesh = fe.RectangleMesh(fe.Point(0,0), fe.Point(L_x, L_y), nx, ny)
 #mesh = fe.UnitSquareMesh(16, 16)
 
 V = fe.VectorFunctionSpace(mesh, "P", 2)
@@ -27,8 +27,8 @@ Q = fe.FunctionSpace(mesh, "P", 1)
 
 # Define boundaries 
 inflow = "near(x[0], 0)" # ie inflow boundary at x[0] = 0(ie x=0)
-outflow = "near(x[0], 1.0)" # ie outflow boundary
-no_slip = "near(x[1], 0.0) || near(x[1], 1.0)" # For no-slip at walls
+outflow = f"near(x[0], {L_x})" # ie outflow boundary
+no_slip = f"near(x[1], 0.0) || near(x[1], {L_y})" # For no-slip at walls
 
 
 # Define boundary conditions 
@@ -132,7 +132,15 @@ for n in range(num_steps):
     
     u_n.assign(u_np1_jc)
     p_n.assign(p_jc)
+    
+    u_e = fe.Expression(('4*x[1]*(1.0 - x[1])', '0'), degree=2)
+    u_e = fe.interpolate(u_e, V)
+    error = np.abs(u_e.vector().get_local() - u_n.vector().get_local()).max()
+    print('t = %.2f: error = %.3g' % (t, error))
+    print('max u:', u_n.vector().get_local().max())
 
+
+#%%
 # Plot velocity field with larger arrows
 # Plot velocity field with larger arrows
 coords = V.tabulate_dof_coordinates()[::2]  # Shape: (1056, 2)
