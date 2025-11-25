@@ -111,25 +111,28 @@ c, mu = split(u)
 c0, mu0 = split(u0)
 
 class InitialConditions(UserExpression):
-    def __init__(self, **kwargs):
+    def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
+        self.Cn_val = float(Cn_val)   # extract scalar
+        self.R0 = R0
+        self.x0 = x0
+        self.Y0 = Y0
         random.seed(2 + MPI.rank(MPI.comm_world))
         super().__init__(**kwargs)
+
     def eval(self, values, x):
-        if np.sqrt((x[0]-x0)**2 + (x[1]+Y0)**2) <= R0:
-            values[0] = 1
-        else:
-            values[0] = -1
+        r = np.sqrt((x[0] - self.x0)**2 + (x[1] )**2)
+        dist = r - self.R0
+        values[0] = -np.tanh(dist / (np.sqrt(2) * 0.01))
         values[1] = 0.0
+
     def value_shape(self):
         return (2,)
 
-if not load:
-    u_init = InitialConditions(degree=1)
-else:
-    u_init = Function(ME, init_file)
 
+u_init = InitialConditions(Cn_val=Cn, R0=R0, x0=x0, Y0=Y0, degree=2)
 u.interpolate(u_init)
 u0.interpolate(u_init)
+
 
 class LowerBoundary(SubDomain):
     def inside(self, x, on_boundary):
@@ -276,7 +279,7 @@ def main():
     sd = -2
     Tfinal = 100
     Nsaved = 200
-    file_name = "Output"
+    file_name = "Output/ME_mod"
     droplet_solution(sd, Tfinal, Nsaved, file_name)
 
 if __name__ == "__main__":
