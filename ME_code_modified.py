@@ -9,13 +9,24 @@ from dolfin import *
 from array import *
 import scipy as sp
 import scipy.optimize
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+import matplotlib.tri as tri
+import os
 
 parameters["std_out_all_processes"] = False
+set_log_level(LogLevel.ERROR)
+
+WORKDIR = os.getcwd()
+outDirName = os.path.join(WORKDIR, "Output/ME_mod/figures")
+os.makedirs(outDirName, exist_ok=True)
+
 
 load = False
 init_file = 'initial_condition.xml'
 
-Th00 = 70*pi/180
+Th00 = 90*pi/180
 epsc = 0.1
 epsT = 0.05
 lamd = 1/6
@@ -67,13 +78,6 @@ RR = 1
 
 domain_n_points = 80
 domain_points = []
-for n in range(domain_n_points + 1):
-    x = n*1./domain_n_points
-    domain_points.append(Point(x, epsT*lamd*np.cos(2*np.pi/lamd*(x - RR/2))))
-domain_points.append(Point(RR, abs(epsT*lamd)))
-domain_points.append(Point(RR, TT))
-domain_points.append(Point(0., TT))
-domain_points.append(Point(0., abs(epsT*lamd)))
 
 mesh = RectangleMesh(Point(0, 0), Point(RR, TT), 80, 80)
 
@@ -169,8 +173,8 @@ ds = Measure('ds', domain=mesh, subdomain_data=mesh_function)
 n = FacetNormal(mesh)
 
 zeta = np.sqrt(2)/3
-Wetting = Expression('zeta*cos(Th00 + epsc*cos(2*pi/lamd*(x[0] -0.5)))',
-                     zeta=zeta, Th00=Th00, epsc=epsc, lamd=lamd, degree=1)
+Wetting = Expression('zeta*cos( Th00 )',
+                     zeta=zeta, Th00=Th00, degree=1)
 
 c_var = variable(c)
 f1 = 1/4*(1 - c_var**2)**2
@@ -240,14 +244,11 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
     ts = np.linspace(0, Tfinal, Nt)
     itc = 0
 
+    ctr = -1
     while t < Tfinal:
+        ctr +=1
         u0.vector()[:] = u.vector()
-        if t < 4:
-            sdI = 0
-            print("evaporation OFF")
-        else:
-            sdI = sd
-            print("evaporation ON")
+        sdI = 0
 
         solver.solve(Evaporate(sdI), u.vector())
 
@@ -265,6 +266,26 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
         y0.assign(u1)
         it += 1
         t += dt
+        
+        if ctr % 100 == 0:
+            coords = mesh.coordinates()
+            phi_vals = u.split()[0].compute_vertex_values(mesh)
+            triangles = mesh.cells()  # get mesh connectivity
+            triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
+        
+            plt.figure(figsize=(6,5))
+            plt.tricontourf(triang, phi_vals, levels=50, cmap="RdBu_r")
+            plt.colorbar(label=r"$\phi$")
+            plt.title(f"phi at t = {t:.2f}")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.tight_layout()
+            
+            # Save the figure to your output folder
+            out_file = os.path.join(outDirName, f"phi_t{ctr:05d}.png")
+            plt.savefig(out_file, dpi=200)
+            #plt.show()
+            plt.close()
 
         if t >= ts[itc]:
             cfile << (u.split()[0], t)
@@ -277,7 +298,7 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
 
 def main():
     sd = -2
-    Tfinal = 100
+    Tfinal = 1000
     Nsaved = 200
     file_name = "Output/ME_mod"
     droplet_solution(sd, Tfinal, Nsaved, file_name)
