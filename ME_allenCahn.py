@@ -19,7 +19,7 @@ parameters["std_out_all_processes"] = False
 set_log_level(LogLevel.ERROR)
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, "Output/ME_mod/figures")
+outDirName = os.path.join(WORKDIR, "Output/ME_AC/figures")
 os.makedirs(outDirName, exist_ok=True)
 
 
@@ -189,9 +189,9 @@ f = -c*grad(mu)
 
 def mobility(c0):
     interface_eps = Ch*d
-    grad_phi_n = fe.grad(c0)
+    grad_phi_n = grad(c0)
     
-    abs_grad_phi_n = fe.sqrt(fe.dot(grad_phi_n, grad_phi_n) + 1e-6)
+    abs_grad_phi_n = sqrt(inner(grad_phi_n, grad_phi_n) + 1e-6)
     inv_abs_grad_phi_n = 1.0 / abs_grad_phi_n
     
     mob = ( 1 - (1-c0)**2/(np.sqrt(2)*interface_eps) * inv_abs_grad_phi_n )
@@ -206,7 +206,7 @@ c_mid = (1-theta)*c0 + theta*c
 def L(vm):
     L0 = inner(c - c0, q)*dx + dt*inner(dot(y0, grad(c0)), q)*dx + \
          Pe*dt*mobility(c0)*inner(grad(c0), grad(q))*dx\
-             + 0.5*dt**2*inner(grad(y0), grad(c0))*(grad(y0),grad(q))*dx
+             + 0.5*dt**2*inner(grad(y0), grad(c0))*inner(grad(y0),grad(q))*dx
     LL1 = mu*v*dx - dfdc*Cn*v*dx - Ch*dot(grad(v), grad(c))*dx + Wetting*v*ds(1)
     return L0 + LL1
 
@@ -317,7 +317,7 @@ def main():
     sd = -2
     Tfinal = 1000
     Nsaved = 200
-    file_name = "Output/ME_mod"
+    file_name = "Output/ME_AC"
     droplet_solution(sd, Tfinal, Nsaved, file_name)
 
 if __name__ == "__main__":
