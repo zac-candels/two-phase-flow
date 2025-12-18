@@ -107,12 +107,12 @@ r = fe.TestFunction(P)
 c_mu_nP1 = fe.Function(ME)
 vel_star = fe.Function(W)
 p1 = fe.Function(P)
-u0 = fe.Function(ME)
+c_mu_n = fe.Function(ME)
 vel_n = fe.Function(W)
 
 dc, dmu = fe.split(c_mu_trial)
 c, mu = fe.split(c_mu_nP1)
-c0, mu0 = fe.split(u0)
+c_n, mu_n = fe.split(c_mu_n)
 
 class InitialConditions(fe.UserExpression):
     def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
@@ -135,7 +135,7 @@ class InitialConditions(fe.UserExpression):
 
 u_init = InitialConditions(Cn_val=Cn, R0=R0, x0=x0, Y0=Y0, degree=2)
 c_mu_nP1.interpolate(u_init)
-u0.interpolate(u_init)
+c_mu_n.interpolate(u_init)
 
 
 class LowerBoundary(fe.SubDomain):
@@ -184,11 +184,11 @@ surf_ten_force = -c*fe.grad(mu)
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
 
-mu_mid = (1-theta)*mu0 + theta*mu
-c_mid = (1-theta)*c0 + theta*c
+mu_mid = (1-theta)*mu_n + theta*mu
+c_mid = (1-theta)*c_n + theta*c
 
-def L(vm):
-    L0 = fe.inner(c - c0, q)*fe.dx + dt*fe.inner(fe.dot(vel_n, fe.grad(c_mid)), q)*fe.dx + \
+def L():
+    L0 = fe.inner(c - c_n, q)*fe.dx + dt*fe.inner(fe.dot(vel_n, fe.grad(c_mid)), q)*fe.dx + \
          Pe*dt*fe.inner(fe.grad(mu_mid), fe.grad(q))*fe.dx
     LL1 = mu*v*fe.dx - dfdc*Cn*v*fe.dx - Ch*fe.dot(fe.grad(v), fe.grad(c))*fe.dx + Wetting*v*ds(1)
     return L0 + LL1
@@ -215,10 +215,9 @@ class CahnHilliardEquation1(fe.NonlinearProblem):
     def J(self, A, x):
         fe.assemble(self.a, tensor=A)
 
-def Evaporate(sdI):
-    vm = fe.Constant(sdI)
-    a_form = fe.derivative(L(vm), c_mu_nP1, c_mu_trial)   # Jacobian form
-    L_form = L(vm)                      # Residual form
+def Evaporate():
+    a_form = fe.derivative(L(), c_mu_nP1, c_mu_trial)   # Jacobian form
+    L_form = L()                      # Residual form
     return CahnHilliardEquation1(a_form, L_form)
 
 solver = fe.NewtonSolver()
@@ -228,7 +227,7 @@ solver.parameters["relative_tolerance"] = 1e-6
 
 prec = "amg" if fe.has_krylov_solver_preconditioner("amg") else "default"
 
-def droplet_solution(sd, Tfinal, Nt, file_name):
+def droplet_solution(Tfinal, Nt, file_name):
     mfile = fe.File(file_name + "/Potential/result.pvd", "compressed")
     cfile = fe.File(file_name + "/Phasefield/result.pvd", "compressed")
     yfile = fe.File(file_name + "/Velocity/result.pvd", "compressed")
@@ -247,10 +246,9 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
     ctr = -1
     while t < Tfinal:
         ctr +=1
-        u0.vector()[:] = c_mu_nP1.vector()
-        sdI = 0
+        c_mu_n.vector()[:] = c_mu_nP1.vector()
 
-        solver.solve(Evaporate(sdI), c_mu_nP1.vector())
+        solver.solve(Evaporate(), c_mu_nP1.vector())
 
         b1 = fe.assemble(L1)
         for bc in bcu: bc.apply(A1, b1)
@@ -297,11 +295,10 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
     file << c_mu_nP1
 
 def main():
-    sd = 0
     Tfinal = 1000
     Nsaved = 200
     file_name = "Output/ME_mod"
-    droplet_solution(sd, Tfinal, Nsaved, file_name)
+    droplet_solution(Tfinal, Nsaved, file_name)
 
 if __name__ == "__main__":
     main()
