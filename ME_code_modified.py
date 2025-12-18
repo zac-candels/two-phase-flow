@@ -39,8 +39,8 @@ def Radius(Th00, epsc, lamd, V):
     def F(x):
         Th = Th00 + epsc*np.cos(2*np.pi*x)
         return V - (x**2/2)*(2*Th - np.sin(2*Th))/(np.sin(Th))**2
-    for y in arr:
-        FF[c] = F(y)
+    for idx in arr:
+        FF[c] = F(idx)
         c += 1
     F1 = FF[0:-1]*FF[1:]
     filt = F1 < 0
@@ -97,21 +97,21 @@ W = VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
 P = FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
 ME = FunctionSpace(mesh, P1*P1, constrained_domain=pbc)
 
-du = TrialFunction(ME)
+c_mu_trial = TrialFunction(ME)
 q, v = TestFunctions(ME)
-y = TrialFunction(W)
+vel_trial = TrialFunction(W)
 p = TrialFunction(P)
 w = TestFunction(W)
 r = TestFunction(P)
 
-u = Function(ME)
-u1 = Function(W)
+c_mu_nP1 = Function(ME)
+vel_star = Function(W)
 p1 = Function(P)
 u0 = Function(ME)
-y0 = Function(W)
+vel_n = Function(W)
 
-dc, dmu = split(du)
-c, mu = split(u)
+dc, dmu = split(c_mu_trial)
+c, mu = split(c_mu_nP1)
 c0, mu0 = split(u0)
 
 class InitialConditions(UserExpression):
@@ -134,7 +134,7 @@ class InitialConditions(UserExpression):
 
 
 u_init = InitialConditions(Cn_val=Cn, R0=R0, x0=x0, Y0=Y0, degree=2)
-u.interpolate(u_init)
+c_mu_nP1.interpolate(u_init)
 u0.interpolate(u_init)
 
 
@@ -179,7 +179,7 @@ Wetting = Expression('zeta*cos( Th00 )',
 c_var = variable(c)
 f1 = 1/4*(1 - c_var**2)**2
 dfdc = diff(f1, c_var)
-f = -c*grad(mu)
+surf_ten_force = -c*grad(mu)
 
 def epsilon(u):
     return 0.5*(nabla_grad(u) + nabla_grad(u).T)
@@ -188,22 +188,22 @@ mu_mid = (1-theta)*mu0 + theta*mu
 c_mid = (1-theta)*c0 + theta*c
 
 def L(vm):
-    L0 = inner(c - c0, q)*dx + dt*inner(dot(y0, grad(c_mid)), q)*dx + \
-         Pe*dt*inner(grad(mu_mid), grad(q))*dx - Pe*dt*vm*q*ds(2)
+    L0 = inner(c - c0, q)*dx + dt*inner(dot(vel_n, grad(c_mid)), q)*dx + \
+         Pe*dt*inner(grad(mu_mid), grad(q))*dx
     LL1 = mu*v*dx - dfdc*Cn*v*dx - Ch*dot(grad(v), grad(c))*dx + Wetting*v*ds(1)
     return L0 + LL1
 
-F1 = (1/k)*inner(y - y0, w)*dx + inner(grad(y0)*y0, w)*dx + \
-     Re*inner(2*epsilon(y), epsilon(w))*dx - We*inner(f, w)*dx
+F1 = (1/k)*inner(vel_trial - vel_n, w)*dx + inner(grad(vel_n)*vel_n, w)*dx + \
+     Re*inner(2*epsilon(vel_trial), epsilon(w))*dx - We*inner(surf_ten_force, w)*dx
 
 a1 = lhs(F1)
 L1 = rhs(F1)
 
 a2 = inner(grad(p), grad(r))*dx
-L2 = -(1/k)*div(u1)*r*dx
+L2 = -(1/k)*div(vel_star)*r*dx
 
-a3 = inner(y, w)*dx
-L3 = inner(u1, w)*dx - k*inner(grad(p1), w)*dx
+a3 = inner(vel_trial, w)*dx
+L3 = inner(vel_star, w)*dx - k*inner(grad(p1), w)*dx
 
 class CahnHilliardEquation1(NonlinearProblem):
     def __init__(self, a, L):
@@ -217,7 +217,7 @@ class CahnHilliardEquation1(NonlinearProblem):
 
 def Evaporate(sdI):
     vm = Constant(sdI)
-    a_form = derivative(L(vm), u, du)   # Jacobian form
+    a_form = derivative(L(vm), c_mu_nP1, c_mu_trial)   # Jacobian form
     L_form = L(vm)                      # Residual form
     return CahnHilliardEquation1(a_form, L_form)
 
@@ -247,29 +247,29 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
     ctr = -1
     while t < Tfinal:
         ctr +=1
-        u0.vector()[:] = u.vector()
+        u0.vector()[:] = c_mu_nP1.vector()
         sdI = 0
 
-        solver.solve(Evaporate(sdI), u.vector())
+        solver.solve(Evaporate(sdI), c_mu_nP1.vector())
 
         b1 = assemble(L1)
         for bc in bcu: bc.apply(A1, b1)
-        solve(A1, u1.vector(), b1, "gmres", prec)
+        solve(A1, vel_star.vector(), b1, "gmres", prec)
 
         b2 = assemble(L2)
         solve(A2, p1.vector(), b2, "gmres", prec)
 
         b3 = assemble(L3)
         for bc in bcu: bc.apply(A3, b3)
-        solve(A3, u1.vector(), b3, "gmres", prec)
+        solve(A3, vel_star.vector(), b3, "gmres", prec)
 
-        y0.assign(u1)
+        vel_n.assign(vel_star)
         it += 1
         t += dt
         
         if ctr % 100 == 0:
             coords = mesh.coordinates()
-            phi_vals = u.split()[0].compute_vertex_values(mesh)
+            phi_vals = c_mu_nP1.split()[0].compute_vertex_values(mesh)
             triangles = mesh.cells()  # get mesh connectivity
             triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
         
@@ -288,16 +288,16 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
             plt.close()
 
         if t >= ts[itc]:
-            cfile << (u.split()[0], t)
-            mfile << (u.split()[1], t)
-            yfile << u1
+            cfile << (c_mu_nP1.split()[0], t)
+            mfile << (c_mu_nP1.split()[1], t)
+            yfile << vel_star
             pfile << p1
             itc += 1
 
-    file << u
+    file << c_mu_nP1
 
 def main():
-    sd = -2
+    sd = 0
     Tfinal = 1000
     Nsaved = 200
     file_name = "Output/ME_mod"
