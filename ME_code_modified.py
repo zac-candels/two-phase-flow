@@ -111,7 +111,7 @@ c_mu_n = fe.Function(ME)
 vel_n = fe.Function(W)
 
 dc, dmu = fe.split(c_mu_trial)
-c, mu = fe.split(c_mu_nP1)
+c_nP1, mu_nP1 = fe.split(c_mu_nP1)
 c_n, mu_n = fe.split(c_mu_n)
 
 class InitialConditions(fe.UserExpression):
@@ -176,21 +176,21 @@ zeta = np.sqrt(2)/3
 Wetting = fe.Expression('zeta*cos( Th00 )',
                      zeta=zeta, Th00=Th00, degree=1)
 
-c_var = fe.variable(c)
+c_var = fe.variable(c_nP1)
 f1 = 1/4*(1 - c_var**2)**2
 dfdc = fe.diff(f1, c_var)
-surf_ten_force = -c*fe.grad(mu)
+surf_ten_force = -c_nP1*fe.grad(mu_nP1)
 
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
 
-mu_mid = (1-theta)*mu_n + theta*mu
-c_mid = (1-theta)*c_n + theta*c
+mu_mid = (1-theta)*mu_n + theta*mu_nP1
+c_mid = (1-theta)*c_n + theta*c_nP1
 
 def L():
-    L0 = fe.inner(c - c_n, q)*fe.dx + dt*fe.inner(fe.dot(vel_n, fe.grad(c_mid)), q)*fe.dx + \
+    L0 = fe.inner(c_nP1 - c_n, q)*fe.dx + dt*fe.inner(fe.dot(vel_n, fe.grad(c_mid)), q)*fe.dx + \
          Pe*dt*fe.inner(fe.grad(mu_mid), fe.grad(q))*fe.dx
-    LL1 = mu*v*fe.dx - dfdc*Cn*v*fe.dx - Ch*fe.dot(fe.grad(v), fe.grad(c))*fe.dx + Wetting*v*ds(1)
+    LL1 = mu_nP1*v*fe.dx - dfdc*Cn*v*fe.dx - Ch*fe.dot(fe.grad(v), fe.grad(c_nP1))*fe.dx + Wetting*v*ds(1)
     return L0 + LL1
 
 F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
@@ -215,7 +215,7 @@ class CahnHilliardEquation1(fe.NonlinearProblem):
     def J(self, A, x):
         fe.assemble(self.a, tensor=A)
 
-def Evaporate():
+def assemble_CH():
     a_form = fe.derivative(L(), c_mu_nP1, c_mu_trial)   # Jacobian form
     L_form = L()                      # Residual form
     return CahnHilliardEquation1(a_form, L_form)
@@ -248,7 +248,7 @@ def droplet_solution(Tfinal, Nt, file_name):
         ctr +=1
         c_mu_n.vector()[:] = c_mu_nP1.vector()
 
-        solver.solve(Evaporate(), c_mu_nP1.vector())
+        solver.solve(assemble_CH(), c_mu_nP1.vector())
 
         b1 = fe.assemble(L1)
         for bc in bcu: bc.apply(A1, b1)
