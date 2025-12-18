@@ -5,7 +5,7 @@ from __future__ import print_function
 import random
 import numpy as np
 import math
-from dolfin import *
+import fenics as fe
 from array import *
 import scipy as sp
 import scipy.optimize
@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
 
-parameters["std_out_all_processes"] = False
-set_log_level(LogLevel.ERROR)
+fe.parameters["std_out_all_processes"] = False
+fe.set_log_level(fe.LogLevel.ERROR)
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, "Output/ME_mod/figures")
@@ -26,7 +26,7 @@ os.makedirs(outDirName, exist_ok=True)
 load = False
 init_file = 'initial_condition.xml'
 
-Th00 = 90*pi/180
+Th00 = 90*fe.pi/180
 epsc = 0.1
 epsT = 0.05
 lamd = 1/6
@@ -64,14 +64,14 @@ theta = 0.5
 Rey = 1
 Web = 0.2
 
-Cn = Constant(1/Ch)
-k = Constant(dt)
-We = Constant(1/Web)
-Re = Constant(1/Rey)
-Pe = Constant(mob)
+Cn = fe.Constant(1/Ch)
+k = fe.Constant(dt)
+We = fe.Constant(1/Web)
+Re = fe.Constant(1/Rey)
+Pe = fe.Constant(mob)
 
-parameters["form_compiler"]["optimize"] = True
-parameters["form_compiler"]["cpp_optimize"] = True
+fe.parameters["form_compiler"]["optimize"] = True
+fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 TT = 0.5
 RR = 1
@@ -79,48 +79,48 @@ RR = 1
 domain_n_points = 80
 domain_points = []
 
-mesh = RectangleMesh(Point(0, 0), Point(RR, TT), 80, 80)
+mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT), 80, 80)
 
-mesh_file = File("mesh.xml")
+mesh_file = fe.File("mesh.xml")
 mesh_file << mesh
 
-class PeriodicBoundary(SubDomain):
+class PeriodicBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return bool(x[0] < DOLFIN_EPS and x[0] > -DOLFIN_EPS and on_boundary)
+        return bool(x[0] < fe.DOLFIN_EPS and x[0] > -fe.DOLFIN_EPS and on_boundary)
     def map(self, x, y):
         y[0] = x[0] - RR
         y[1] = x[1]
 
 pbc = PeriodicBoundary()
-P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
-W = VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
-P = FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
-ME = FunctionSpace(mesh, P1*P1, constrained_domain=pbc)
+P1 = fe.FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+W = fe.VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
+P = fe.FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
+ME = fe.FunctionSpace(mesh, P1*P1, constrained_domain=pbc)
 
-c_mu_trial = TrialFunction(ME)
-q, v = TestFunctions(ME)
-vel_trial = TrialFunction(W)
-p = TrialFunction(P)
-w = TestFunction(W)
-r = TestFunction(P)
+c_mu_trial = fe.TrialFunction(ME)
+q, v = fe.TestFunctions(ME)
+vel_trial = fe.TrialFunction(W)
+p = fe.TrialFunction(P)
+w = fe.TestFunction(W)
+r = fe.TestFunction(P)
 
-c_mu_nP1 = Function(ME)
-vel_star = Function(W)
-p1 = Function(P)
-u0 = Function(ME)
-vel_n = Function(W)
+c_mu_nP1 = fe.Function(ME)
+vel_star = fe.Function(W)
+p1 = fe.Function(P)
+u0 = fe.Function(ME)
+vel_n = fe.Function(W)
 
-dc, dmu = split(c_mu_trial)
-c, mu = split(c_mu_nP1)
-c0, mu0 = split(u0)
+dc, dmu = fe.split(c_mu_trial)
+c, mu = fe.split(c_mu_nP1)
+c0, mu0 = fe.split(u0)
 
-class InitialConditions(UserExpression):
+class InitialConditions(fe.UserExpression):
     def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
         self.Cn_val = float(Cn_val)   # extract scalar
         self.R0 = R0
         self.x0 = x0
         self.Y0 = Y0
-        random.seed(2 + MPI.rank(MPI.comm_world))
+        random.seed(2 + fe.MPI.rank(fe.MPI.comm_world))
         super().__init__(**kwargs)
 
     def eval(self, values, x):
@@ -138,23 +138,23 @@ c_mu_nP1.interpolate(u_init)
 u0.interpolate(u_init)
 
 
-class LowerBoundary(SubDomain):
+class LowerBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
         return on_boundary and x[1] >= -abs(epsT*lamd) and x[1] <= abs(epsT*lamd)
 
-class TopBoundary(SubDomain):
+class TopBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and near(x[1], TT)
+        return on_boundary and fe.near(x[1], TT)
 
-class LeftBoundary(SubDomain):
+class LeftBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and near(x[0], 0.0)
+        return on_boundary and fe.near(x[0], 0.0)
 
-class RightBoundary(SubDomain):
+class RightBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and near(x[0], RR)
+        return on_boundary and fe.near(x[0], RR)
 
-mesh_function = MeshFunction("size_t", mesh, mesh.topology().dim()-1)
+mesh_function = fe.MeshFunction("size_t", mesh, mesh.topology().dim()-1)
 
 Gamma_1 = LowerBoundary()
 Gamma_1.mark(mesh_function, 1)
@@ -165,79 +165,79 @@ Gamma_3.mark(mesh_function, 3)
 Gamma_4 = RightBoundary()
 Gamma_4.mark(mesh_function, 4)
 
-noslip1 = DirichletBC(W, (0, 0), mesh_function, 1)
-noslip2 = DirichletBC(W, (0, 0), mesh_function, 2)
+noslip1 = fe.DirichletBC(W, (0, 0), mesh_function, 1)
+noslip2 = fe.DirichletBC(W, (0, 0), mesh_function, 2)
 bcu = [noslip1, noslip2]
 
-ds = Measure('ds', domain=mesh, subdomain_data=mesh_function)
-n = FacetNormal(mesh)
+ds = fe.Measure('ds', domain=mesh, subdomain_data=mesh_function)
+n = fe.FacetNormal(mesh)
 
 zeta = np.sqrt(2)/3
-Wetting = Expression('zeta*cos( Th00 )',
+Wetting = fe.Expression('zeta*cos( Th00 )',
                      zeta=zeta, Th00=Th00, degree=1)
 
-c_var = variable(c)
+c_var = fe.variable(c)
 f1 = 1/4*(1 - c_var**2)**2
-dfdc = diff(f1, c_var)
-surf_ten_force = -c*grad(mu)
+dfdc = fe.diff(f1, c_var)
+surf_ten_force = -c*fe.grad(mu)
 
 def epsilon(u):
-    return 0.5*(nabla_grad(u) + nabla_grad(u).T)
+    return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
 
 mu_mid = (1-theta)*mu0 + theta*mu
 c_mid = (1-theta)*c0 + theta*c
 
 def L(vm):
-    L0 = inner(c - c0, q)*dx + dt*inner(dot(vel_n, grad(c_mid)), q)*dx + \
-         Pe*dt*inner(grad(mu_mid), grad(q))*dx
-    LL1 = mu*v*dx - dfdc*Cn*v*dx - Ch*dot(grad(v), grad(c))*dx + Wetting*v*ds(1)
+    L0 = fe.inner(c - c0, q)*fe.dx + dt*fe.inner(fe.dot(vel_n, fe.grad(c_mid)), q)*fe.dx + \
+         Pe*dt*fe.inner(fe.grad(mu_mid), fe.grad(q))*fe.dx
+    LL1 = mu*v*fe.dx - dfdc*Cn*v*fe.dx - Ch*fe.dot(fe.grad(v), fe.grad(c))*fe.dx + Wetting*v*ds(1)
     return L0 + LL1
 
-F1 = (1/k)*inner(vel_trial - vel_n, w)*dx + inner(grad(vel_n)*vel_n, w)*dx + \
-     Re*inner(2*epsilon(vel_trial), epsilon(w))*dx - We*inner(surf_ten_force, w)*dx
+F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
+     Re*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - We*fe.inner(surf_ten_force, w)*fe.dx
 
-a1 = lhs(F1)
-L1 = rhs(F1)
+a1 = fe.lhs(F1)
+L1 = fe.rhs(F1)
 
-a2 = inner(grad(p), grad(r))*dx
-L2 = -(1/k)*div(vel_star)*r*dx
+a2 = fe.inner(fe.grad(p), fe.grad(r))*fe.dx
+L2 = -(1/k)*fe.div(vel_star)*r*fe.dx
 
-a3 = inner(vel_trial, w)*dx
-L3 = inner(vel_star, w)*dx - k*inner(grad(p1), w)*dx
+a3 = fe.inner(vel_trial, w)*fe.dx
+L3 = fe.inner(vel_star, w)*fe.dx - k*fe.inner(fe.grad(p1), w)*fe.dx
 
-class CahnHilliardEquation1(NonlinearProblem):
+class CahnHilliardEquation1(fe.NonlinearProblem):
     def __init__(self, a, L):
         super().__init__()
         self.L = L
         self.a = a
     def F(self, b, x):
-        assemble(self.L, tensor=b)
+        fe.assemble(self.L, tensor=b)
     def J(self, A, x):
-        assemble(self.a, tensor=A)
+        fe.assemble(self.a, tensor=A)
 
 def Evaporate(sdI):
-    vm = Constant(sdI)
-    a_form = derivative(L(vm), c_mu_nP1, c_mu_trial)   # Jacobian form
+    vm = fe.Constant(sdI)
+    a_form = fe.derivative(L(vm), c_mu_nP1, c_mu_trial)   # Jacobian form
     L_form = L(vm)                      # Residual form
     return CahnHilliardEquation1(a_form, L_form)
 
-solver = NewtonSolver()
+solver = fe.NewtonSolver()
 solver.parameters["linear_solver"] = "lu"
 solver.parameters["convergence_criterion"] = "incremental"
 solver.parameters["relative_tolerance"] = 1e-6
 
-prec = "amg" if has_krylov_solver_preconditioner("amg") else "default"
+prec = "amg" if fe.has_krylov_solver_preconditioner("amg") else "default"
 
 def droplet_solution(sd, Tfinal, Nt, file_name):
-    mfile = File(file_name + "/Potential/result.pvd", "compressed")
-    cfile = File(file_name + "/Phasefield/result.pvd", "compressed")
-    yfile = File(file_name + "/Velocity/result.pvd", "compressed")
-    pfile = File(file_name + "/Pressure/result.pvd", "compressed")
-    file = File(file_name + "/final_u_.xml")
+    mfile = fe.File(file_name + "/Potential/result.pvd", "compressed")
+    cfile = fe.File(file_name + "/Phasefield/result.pvd", "compressed")
+    yfile = fe.File(file_name + "/Velocity/result.pvd", "compressed")
+    pfile = fe.File(file_name + "/Pressure/result.pvd", "compressed")
+    file = fe.File(file_name + "/final_u_.xml")
 
-    A1 = assemble(a1)
-    A2 = assemble(a2)
-    A3 = assemble(a3)
+    A1 = fe.assemble(a1)
+    A2 = fe.assemble(a2)
+    A3 = fe.assemble(a3)
 
     it = 0
     t = 0.0
@@ -252,16 +252,16 @@ def droplet_solution(sd, Tfinal, Nt, file_name):
 
         solver.solve(Evaporate(sdI), c_mu_nP1.vector())
 
-        b1 = assemble(L1)
+        b1 = fe.assemble(L1)
         for bc in bcu: bc.apply(A1, b1)
-        solve(A1, vel_star.vector(), b1, "gmres", prec)
+        fe.solve(A1, vel_star.vector(), b1, "gmres", prec)
 
-        b2 = assemble(L2)
-        solve(A2, p1.vector(), b2, "gmres", prec)
+        b2 = fe.assemble(L2)
+        fe.solve(A2, p1.vector(), b2, "gmres", prec)
 
-        b3 = assemble(L3)
+        b3 = fe.assemble(L3)
         for bc in bcu: bc.apply(A3, b3)
-        solve(A3, vel_star.vector(), b3, "gmres", prec)
+        fe.solve(A3, vel_star.vector(), b3, "gmres", prec)
 
         vel_n.assign(vel_star)
         it += 1
