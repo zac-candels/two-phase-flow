@@ -251,16 +251,16 @@ def droplet_solution(Tfinal, Nt, file_name):
 
         solver.solve(assemble_CH(), c_mu_nP1.vector())
 
-        b1 = fe.assemble(NS_lin)
-        for bc in bcu: bc.apply(NS_mat, b1)
-        fe.solve(NS_mat, vel_star.vector(), b1, "gmres", prec)
+        NS_rhs_vec = fe.assemble(NS_lin)
+        for bc in bcu: bc.apply(NS_mat, NS_rhs_vec)
+        fe.solve(NS_mat, vel_star.vector(), NS_rhs_vec, "gmres", prec)
 
-        b2 = fe.assemble(pres_update_lin)
-        fe.solve(pres_update_mat, p1.vector(), b2, "gmres", prec)
+        pres_update_rhs_vec = fe.assemble(pres_update_lin)
+        fe.solve(pres_update_mat, p1.vector(), pres_update_rhs_vec, "gmres", prec)
 
-        b3 = fe.assemble(vel_update_lin)
-        for bc in bcu: bc.apply(vel_update_mat, b3)
-        fe.solve(vel_update_mat, vel_nP1.vector(), b3, "gmres", prec)
+        vel_update_rhs_vec = fe.assemble(vel_update_lin)
+        for bc in bcu: bc.apply(vel_update_mat, vel_update_rhs_vec)
+        fe.solve(vel_update_mat, vel_nP1.vector(), vel_update_rhs_vec, "gmres", prec)
 
         vel_n.assign(vel_nP1)
         it += 1
