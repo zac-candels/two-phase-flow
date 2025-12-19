@@ -109,6 +109,7 @@ vel_star = fe.Function(W)
 p1 = fe.Function(P)
 c_mu_n = fe.Function(ME)
 vel_n = fe.Function(W)
+vel_nP1 = fe.Function(W)
 
 dc, dmu = fe.split(c_mu_trial)
 c_nP1, mu_nP1 = fe.split(c_mu_nP1)
@@ -196,14 +197,14 @@ def L():
 F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
      Re*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - We*fe.inner(surf_ten_force, w)*fe.dx
 
-a1 = fe.lhs(F1)
-L1 = fe.rhs(F1)
+NS_bilin = fe.lhs(F1)
+NS_lin = fe.rhs(F1)
 
-a2 = fe.inner(fe.grad(p), fe.grad(r))*fe.dx
-L2 = -(1/k)*fe.div(vel_star)*r*fe.dx
+pres_update_bilin = fe.inner(fe.grad(p), fe.grad(r))*fe.dx
+pres_update_lin = -(1/k)*fe.div(vel_star)*r*fe.dx
 
-a3 = fe.inner(vel_trial, w)*fe.dx
-L3 = fe.inner(vel_star, w)*fe.dx - k*fe.inner(fe.grad(p1), w)*fe.dx
+vel_update_bilin = fe.inner(vel_trial, w)*fe.dx
+vel_update_lin = fe.inner(vel_star, w)*fe.dx - k*fe.inner(fe.grad(p1), w)*fe.dx
 
 class CahnHilliardEquation1(fe.NonlinearProblem):
     def __init__(self, a, L):
@@ -234,9 +235,9 @@ def droplet_solution(Tfinal, Nt, file_name):
     pfile = fe.File(file_name + "/Pressure/result.pvd", "compressed")
     file = fe.File(file_name + "/final_u_.xml")
 
-    A1 = fe.assemble(a1)
-    A2 = fe.assemble(a2)
-    A3 = fe.assemble(a3)
+    NS_mat = fe.assemble(NS_bilin)
+    A2 = fe.assemble(pres_update_bilin)
+    A3 = fe.assemble(vel_update_bilin)
 
     it = 0
     t = 0.0
@@ -250,18 +251,18 @@ def droplet_solution(Tfinal, Nt, file_name):
 
         solver.solve(assemble_CH(), c_mu_nP1.vector())
 
-        b1 = fe.assemble(L1)
-        for bc in bcu: bc.apply(A1, b1)
-        fe.solve(A1, vel_star.vector(), b1, "gmres", prec)
+        b1 = fe.assemble(NS_lin)
+        for bc in bcu: bc.apply(NS_mat, b1)
+        fe.solve(NS_mat, vel_star.vector(), b1, "gmres", prec)
 
-        b2 = fe.assemble(L2)
+        b2 = fe.assemble(pres_update_lin)
         fe.solve(A2, p1.vector(), b2, "gmres", prec)
 
-        b3 = fe.assemble(L3)
+        b3 = fe.assemble(vel_update_lin)
         for bc in bcu: bc.apply(A3, b3)
-        fe.solve(A3, vel_star.vector(), b3, "gmres", prec)
+        fe.solve(A3, vel_nP1.vector(), b3, "gmres", prec)
 
-        vel_n.assign(vel_star)
+        vel_n.assign(vel_nP1)
         it += 1
         t += dt
         
