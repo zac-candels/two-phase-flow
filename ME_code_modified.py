@@ -236,8 +236,8 @@ def droplet_solution(Tfinal, Nt, file_name):
     file = fe.File(file_name + "/final_u_.xml")
 
     NS_mat = fe.assemble(NS_bilin)
-    A2 = fe.assemble(pres_update_bilin)
-    A3 = fe.assemble(vel_update_bilin)
+    pres_update_mat = fe.assemble(pres_update_bilin)
+    vel_update_mat = fe.assemble(vel_update_bilin)
 
     it = 0
     t = 0.0
@@ -256,11 +256,11 @@ def droplet_solution(Tfinal, Nt, file_name):
         fe.solve(NS_mat, vel_star.vector(), b1, "gmres", prec)
 
         b2 = fe.assemble(pres_update_lin)
-        fe.solve(A2, p1.vector(), b2, "gmres", prec)
+        fe.solve(pres_update_mat, p1.vector(), b2, "gmres", prec)
 
         b3 = fe.assemble(vel_update_lin)
-        for bc in bcu: bc.apply(A3, b3)
-        fe.solve(A3, vel_nP1.vector(), b3, "gmres", prec)
+        for bc in bcu: bc.apply(vel_update_mat, b3)
+        fe.solve(vel_update_mat, vel_nP1.vector(), b3, "gmres", prec)
 
         vel_n.assign(vel_nP1)
         it += 1
