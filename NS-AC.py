@@ -96,24 +96,26 @@ P1 = fe.FiniteElement("Lagrange", mesh.ufl_cell(), 1)
 W = fe.VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
 P = fe.FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
 ME = fe.FunctionSpace(mesh, P1*P1, constrained_domain=pbc)
+ME = fe.FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
 
-c_mu_trial = fe.TrialFunction(ME)
-q, v = fe.TestFunctions(ME)
+c_trial = fe.TrialFunction(ME)
+mu_trial = fe.TrialFunction(ME)
+q = fe.TestFunction(ME)
+v = fe.TestFunction(ME)
 vel_trial = fe.TrialFunction(W)
 p = fe.TrialFunction(P)
 w = fe.TestFunction(W)
 r = fe.TestFunction(P)
 
-c_mu_nP1 = fe.Function(ME)
 vel_star = fe.Function(W)
 p1 = fe.Function(P)
-c_mu_n = fe.Function(ME)
 vel_n = fe.Function(W)
 vel_nP1 = fe.Function(W)
 
-dc, dmu = fe.split(c_mu_trial)
-c_nP1, mu_nP1 = fe.split(c_mu_nP1)
-c_n, mu_n = fe.split(c_mu_n)
+c_nP1 = fe.Function(ME)
+mu_nP1 = fe.Function(ME)
+c_n = fe.Function(ME)
+mu_n = fe.Function(ME)
 
 class InitialConditions(fe.UserExpression):
     def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
@@ -132,11 +134,19 @@ class InitialConditions(fe.UserExpression):
 
     def value_shape(self):
         return (2,)
+    
+    
+c_init_expr = fe.Expression(
+    "0.5 - 0.5 * tanh( 2.0 * (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / eps )",
+    degree=2,  # polynomial degree used for interpolation
+    xc=x0,
+    yc=Y0,
+    R=R0,
+    eps=Ch
+)
 
+c_n = fe.interpolate(c_init_expr, ME)
 
-u_init = InitialConditions(Cn_val=Cn, R0=R0, x0=x0, Y0=Y0, degree=2)
-c_mu_nP1.interpolate(u_init)
-c_mu_n.interpolate(u_init)
 
 
 class LowerBoundary(fe.SubDomain):
@@ -209,8 +219,8 @@ def mobility(phi_n):
     
 
 
-bilin_form_AC = dc * q * fe.dx
-bilin_form_mu = dmu * v * fe.dx
+bilin_form_AC = c_trial * q * fe.dx
+bilin_form_mu = mu_trial * v * fe.dx
 
 lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
@@ -248,7 +258,6 @@ def droplet_solution(Tfinal, Nt, file_name):
     cfile = fe.File(file_name + "/Phasefield/result.pvd", "compressed")
     yfile = fe.File(file_name + "/Velocity/result.pvd", "compressed")
     pfile = fe.File(file_name + "/Pressure/result.pvd", "compressed")
-    file = fe.File(file_name + "/final_u_.xml")
 
     NS_mat = fe.assemble(NS_bilin)
     pres_update_mat = fe.assemble(pres_update_bilin)
@@ -262,8 +271,7 @@ def droplet_solution(Tfinal, Nt, file_name):
     ctr = -1
     while t < Tfinal:
         ctr +=1
-        c_mu_n.vector()[:] = c_mu_nP1.vector()
-
+        
         rhs_AC = fe.assemble(lin_form_AC)
         rhs_mu = fe.assemble(lin_form_mu)
         
@@ -287,7 +295,7 @@ def droplet_solution(Tfinal, Nt, file_name):
         
         if ctr % 100 == 0:
             coords = mesh.coordinates()
-            phi_vals = c_mu_nP1.split()[0].compute_vertex_values(mesh)
+            phi_vals = c_n.compute_vertex_values(mesh)
             triangles = mesh.cells()  # get mesh connectivity
             triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
         
@@ -306,13 +314,12 @@ def droplet_solution(Tfinal, Nt, file_name):
             plt.close()
 
         if t >= ts[itc]:
-            cfile << (c_mu_nP1.split()[0], t)
-            mfile << (c_mu_nP1.split()[1], t)
+            cfile << (c_n, t)
+            mfile << (mu_n, t)
             yfile << vel_star
             pfile << p1
             itc += 1
 
-    file << c_mu_nP1
 
 def main():
     Tfinal = 1000
