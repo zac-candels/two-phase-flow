@@ -7,7 +7,7 @@ from array import *
 import scipy as sp
 import scipy.optimize
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
@@ -76,7 +76,7 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 TT = 0.5
 RR = 1
 
-domain_n_points = 80
+domain_n_points = 100
 domain_points = []
 
 mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT), 80, 80)
@@ -224,7 +224,8 @@ bilin_form_mu = mu_trial * v * fe.dx
 
 lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
-        - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
+        - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
+                - dt*Cn*np.cos(theta)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
 lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
     + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
