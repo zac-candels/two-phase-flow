@@ -10,36 +10,3 @@ Also make sure that all modulefiles written in TCL start with the string
 
 
 
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/PIL/Image.py", line 2212, in save
-    save_handler(self, fp, filename)
-  File "/usr/lib/python3/dist-packages/PIL/PngImagePlugin.py", line 1362, in _save
-    fp.flush()
-OSError: [Errno 122] Disk quota exceeded
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/root/shared/NS-AC.py", line 331, in <module>
-    main()
-  File "/root/shared/NS-AC.py", line 328, in main
-    droplet_solution(Tfinal, Nsaved, file_name)
-  File "/root/shared/NS-AC.py", line 312, in droplet_solution
-    plt.savefig(out_file, dpi=200)
-  File "/usr/lib/python3/dist-packages/matplotlib/pyplot.py", line 958, in savefig
-    res = fig.savefig(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/matplotlib/figure.py", line 3019, in savefig
-    self.canvas.print_figure(fname, **kwargs)
-  File "/usr/lib/python3/dist-packages/matplotlib/backend_bases.py", line 2319, in print_figure
-    result = print_method(
-  File "/usr/lib/python3/dist-packages/matplotlib/backend_bases.py", line 1648, in wrapper
-    return func(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/matplotlib/_api/deprecation.py", line 412, in wrapper
-    return func(*inner_args, **inner_kwargs)
-  File "/usr/lib/python3/dist-packages/matplotlib/backends/backend_agg.py", line 541, in print_png
-    mpl.image.imsave(
-  File "/usr/lib/python3/dist-packages/matplotlib/image.py", line 1675, in imsave
-    image.save(fname, **pil_kwargs)
-  File "/usr/lib/python3/dist-packages/PIL/Image.py", line 2216, in save
-    fp.close()
-OSError: [Errno 122] Disk quota exceeded

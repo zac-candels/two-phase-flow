@@ -225,11 +225,10 @@ bilin_form_mu = mu_trial * v * fe.dx
 lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
-                - dt*Cn*np.cos(theta)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
+                - dt*Cn*np.cos(Th00)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
 lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
-    + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + (3/2)*4*np.cos(theta)*Cn*v*(c_n - c_n**2)*ds_bottom )
+    + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
 
 
 F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
