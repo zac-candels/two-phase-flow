@@ -23,18 +23,18 @@ os.makedirs(outDirName, exist_ok=True)
 load = False
 init_file = 'initial_condition.xml'
 
-Th00 = 90*fe.pi/180
+theta = 90*fe.pi/180
 epsc = 0.1
 epsT = 0.05
 lamd = 1/6
 V = (2.4 + 0.1)*lamd**2
 
-def Radius(Th00, epsc, lamd, V):
+def Radius(theta, epsc, lamd, V):
     arr = np.linspace(0, 10, 1000)
     FF = np.zeros((arr.size))
     c = 0
     def F(x):
-        Th = Th00 + epsc*np.cos(2*np.pi*x)
+        Th = theta + epsc*np.cos(2*np.pi*x)
         return V - (x**2/2)*(2*Th - np.sin(2*Th))/(np.sin(Th))**2
     for idx in arr:
         FF[c] = F(idx)
@@ -47,17 +47,16 @@ def Radius(Th00, epsc, lamd, V):
         rd[i] = sp.optimize.newton(F, R00[i])
     return rd[0]
 
-d = Radius(Th00, epsc, lamd, V)
+d = Radius(theta, epsc, lamd, V)
 
 x0 = 3.0*lamd
-Th = Th00 + epsc*np.cos(2*np.pi*d)
+Th = theta + epsc*np.cos(2*np.pi*d)
 R0 = d/np.sin(Th)
 Y0 = d/np.tan(Th)
 
 Ch = 1.0e-02
 dt = 1.0e-02
 mob = 3*Ch**2
-theta = 0.5
 Rey = 1
 Web = 0.2
 
@@ -79,7 +78,8 @@ RR = 1
 domain_n_points = 100
 domain_points = []
 
-mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT), 80, 80)
+mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT),
+                        domain_n_points, domain_n_points)
 
 mesh_file = fe.File("mesh.xml")
 mesh_file << mesh
@@ -197,8 +197,8 @@ ds_bottom = fe.Measure("ds", domain=mesh, subdomain_data=boundaries, subdomain_i
 
 
 zeta = np.sqrt(2)/3
-Wetting = fe.Expression('zeta*cos( Th00 )',
-                     zeta=zeta, Th00=Th00, degree=1)
+Wetting = fe.Expression('zeta*cos( theta )',
+                     zeta=zeta, theta=theta, degree=1)
 
 c_var = fe.variable(c_nP1)
 f1 = 1/4*(1 - c_var**2)**2
@@ -225,7 +225,7 @@ bilin_form_mu = mu_trial * v * fe.dx
 lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
-                - dt*Cn*np.cos(Th00)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
+                + dt*Cn*np.cos(theta)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
 lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
     + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
