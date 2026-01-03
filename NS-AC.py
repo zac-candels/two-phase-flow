@@ -54,20 +54,14 @@ Th = theta + epsc*np.cos(2*np.pi*d)
 R0 = d/np.sin(Th)
 Y0 = d/np.tan(Th)
 
-Ch = 1.0e-02
 dt = 1.0e-02
-mob = 3*Ch**2
-Rey = 1
-Web = 0.2
 
-M_tilde = 0.01
-Num = 0.1
-
-Cn = fe.Constant(1/Ch)
+Za= fe.Constant(0.1)
+Cn = fe.Constant(0.01)
 k = fe.Constant(dt)
-We = fe.Constant(1/Web)
-Re = fe.Constant(1/Rey)
-Pe = fe.Constant(mob)
+We = fe.Constant(1/0.2)
+Re = fe.Constant(1)
+Pe = fe.Constant(0.1)
 
 fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
@@ -142,7 +136,7 @@ c_init_expr = fe.Expression(
     xc=x0,
     yc=Y0,
     R=R0,
-    eps=Ch
+    eps=Cn
 )
 
 c_n = fe.interpolate(c_init_expr, ME)
@@ -214,7 +208,7 @@ def mobility(phi_n):
     abs_grad_phi_n = fe.sqrt(fe.dot(grad_phi_n, grad_phi_n) + 1e-6)
     inv_abs_grad_phi_n = 1.0 / abs_grad_phi_n
     
-    mob = M_tilde*( 1/Pe - Num*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    mob = ( 1/Pe - Za*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
     return mob
     
 
