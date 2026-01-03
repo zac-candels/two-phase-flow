@@ -69,7 +69,7 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 TT = 0.5
 RR = 1
 
-domain_n_points = 100
+domain_n_points = 120
 domain_points = []
 
 mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT),

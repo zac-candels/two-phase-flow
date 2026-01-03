@@ -4,3 +4,5 @@
 **.mat
 **.dat
 **/Output*
+**.log
+**.xml
