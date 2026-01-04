@@ -15,19 +15,17 @@ import os
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, "Output/ME_mod/figures")
-os.makedirs(outDirName, exist_ok=True)
-
-
-load = False
-init_file = 'initial_condition.xml'
 
 theta = 90*fe.pi/180
 epsc = 0.1
 epsT = 0.05
 lamd = 1/6
 V = (2.4 + 0.1)*lamd**2
+
+WORKDIR = os.getcwd()
+outDirName = os.path.join(WORKDIR, f"Output_CA{30}")
+matplotFigs = outDirName + "/matPlotFigs"
+os.makedirs(outDirName, exist_ok=True)
 
 def Radius(theta, epsc, lamd, V):
     arr = np.linspace(0, 10, 1000)
@@ -302,7 +300,7 @@ def droplet_solution(Tfinal, Nt, file_name):
             plt.tight_layout()
             
             # Save the figure to your output folder
-            out_file = os.path.join(outDirName, f"phi_t{ctr:05d}.png")
+            out_file = os.path.join(matPlotFigs, f"/phi_t{ctr:05d}.png")
             plt.savefig(out_file, dpi=200)
             #plt.show()
             plt.close()
@@ -318,8 +316,7 @@ def droplet_solution(Tfinal, Nt, file_name):
 def main():
     Tfinal = 1000
     Nsaved = 200
-    file_name = "Output/ME_mod"
-    droplet_solution(Tfinal, Nsaved, file_name)
+    droplet_solution(Tfinal, Nsaved, outDirName)
 
 if __name__ == "__main__":
     main()
