@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=NS-AC
-#SBATCH --output=output.log
-#SBATCH --error=error.log
+#SBATCH --job-name=CA30
+#SBATCH --output=out30.log
+#SBATCH --error=error30.log
 #SBATCH --time=24:00:00
 #SBATCH --partition=standard
 #SBATCH --account=ec288-wetting
 #SBATCH --qos=lowpriority
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=230
+#SBATCH --cpus-per-task=288
 
 module load singularity
 

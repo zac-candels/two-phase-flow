@@ -59,9 +59,9 @@ dt = 1.0e-02
 Za= fe.Constant(0.1)
 Cn = fe.Constant(0.01)
 k = fe.Constant(dt)
-We = fe.Constant(1/0.2)
+We = fe.Constant(0.2)
 Re = fe.Constant(1)
-Pe = fe.Constant(0.1)
+Pe = fe.Constant(1/(3*Cn**2))
 
 fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
@@ -89,7 +89,6 @@ pbc = PeriodicBoundary()
 P1 = fe.FiniteElement("Lagrange", mesh.ufl_cell(), 1)
 W = fe.VectorFunctionSpace(mesh, "Lagrange", 2, constrained_domain=pbc)
 P = fe.FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
-ME = fe.FunctionSpace(mesh, P1*P1, constrained_domain=pbc)
 ME = fe.FunctionSpace(mesh, "Lagrange", 1, constrained_domain=pbc)
 
 c_trial = fe.TrialFunction(ME)
