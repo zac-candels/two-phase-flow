@@ -7,7 +7,7 @@ from array import *
 import scipy as sp
 import scipy.optimize
 import matplotlib
-matplotlib.use("Agg")
+#matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
@@ -15,24 +15,26 @@ import os
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-
-theta = 90*fe.pi/180
+theta_deg = 30
+theta = theta_deg*np.pi/180
+sizeParam = 1.57
 epsc = 0.1
 epsT = 0.05
 lamd = 1/6
 V = (2.4 + 0.1)*lamd**2
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"Output_CA{30}")
-matplotFigs = outDirName + "/matPlotFigs"
+outDirName = os.path.join(WORKDIR, f"output_CA{theta_deg}")
+matPlotFigs = outDirName + "/matPlotFigs"
+os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
 
-def Radius(theta, epsc, lamd, V):
+def Radius(sizeParam, epsc, lamd, V):
     arr = np.linspace(0, 10, 1000)
     FF = np.zeros((arr.size))
     c = 0
     def F(x):
-        Th = theta + epsc*np.cos(2*np.pi*x)
+        Th = sizeParam + epsc*np.cos(2*np.pi*x)
         return V - (x**2/2)*(2*Th - np.sin(2*Th))/(np.sin(Th))**2
     for idx in arr:
         FF[c] = F(idx)
@@ -45,10 +47,10 @@ def Radius(theta, epsc, lamd, V):
         rd[i] = sp.optimize.newton(F, R00[i])
     return rd[0]
 
-d = Radius(theta, epsc, lamd, V)
+d = Radius(sizeParam, epsc, lamd, V)
 
 x0 = 3.0*lamd
-Th = theta + epsc*np.cos(2*np.pi*d)
+Th = sizeParam + epsc*np.cos(2*np.pi*d)
 R0 = d/np.sin(Th)
 Y0 = d/np.tan(Th)
 
@@ -292,7 +294,7 @@ def droplet_solution(Tfinal, Nt, file_name):
             triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
         
             plt.figure(figsize=(6,5))
-            plt.tricontourf(triang, phi_vals, levels=50, cmap="RdBu_r")
+            plt.tricontourf(triang, phi_vals, levels=90, cmap="RdBu_r")
             plt.colorbar(label=r"$\phi$")
             plt.title(f"phi at t = {t:.2f}")
             plt.xlabel("x")
@@ -300,7 +302,7 @@ def droplet_solution(Tfinal, Nt, file_name):
             plt.tight_layout()
             
             # Save the figure to your output folder
-            out_file = os.path.join(matPlotFigs, f"/phi_t{ctr:05d}.png")
+            out_file = os.path.join(matPlotFigs, f"phi_t{ctr:05d}.png")
             plt.savefig(out_file, dpi=200)
             #plt.show()
             plt.close()
