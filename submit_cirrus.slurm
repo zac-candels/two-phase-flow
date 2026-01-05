@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=CA30
-#SBATCH --output=out30.log
-#SBATCH --error=error30.log
+#SBATCH --job-name=CA120
+#SBATCH --output=out120.log
+#SBATCH --error=error120.log
 #SBATCH --time=24:00:00
 #SBATCH --partition=standard
 #SBATCH --account=ec288-wetting

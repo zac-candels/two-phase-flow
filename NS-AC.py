@@ -15,7 +15,7 @@ import os
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 30
+theta_deg = 120
 theta = theta_deg*np.pi/180
 sizeParam = 1.57
 epsc = 0.1
@@ -193,10 +193,8 @@ zeta = np.sqrt(2)/3
 Wetting = fe.Expression('zeta*cos( theta )',
                      zeta=zeta, theta=theta, degree=1)
 
-c_var = fe.variable(c_nP1)
-f1 = 1/4*(1 - c_var**2)**2
-dfdc = fe.diff(f1, c_var)
-surf_ten_force = -c_nP1*fe.grad(mu_nP1)
+
+surf_ten_force = -c_n*fe.grad(mu_n)
 
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)

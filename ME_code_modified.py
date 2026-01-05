@@ -175,12 +175,12 @@ n = fe.FacetNormal(mesh)
 
 zeta = np.sqrt(2)/3
 Wetting = fe.Expression('zeta*cos( Th00 )',
-                     zeta=zeta, Th00=Th00, degree=1)
+                     zeta=zeta, Th00=30, degree=1)
 
 c_var = fe.variable(c_nP1)
 f1 = 1/4*(1 - c_var**2)**2
 dfdc = fe.diff(f1, c_var)
-surf_ten_force = -c_nP1*fe.grad(mu_nP1)
+surf_ten_force = -c_n*fe.grad(mu_n)
 
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
