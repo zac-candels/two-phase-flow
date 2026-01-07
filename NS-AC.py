@@ -7,7 +7,7 @@ from array import *
 import scipy as sp
 import scipy.optimize
 import matplotlib
-#matplotlib.use("TkAgg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
@@ -15,7 +15,7 @@ import os
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 120
+theta_deg = 30
 theta = theta_deg*np.pi/180
 sizeParam = 1.57
 epsc = 0.1
@@ -223,7 +223,7 @@ lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
 
 
 F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
-     Re*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - We*fe.inner(surf_ten_force, w)*fe.dx
+     (1/Re)*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - (1/We)*fe.inner(surf_ten_force, w)*fe.dx
 
 NS_bilin = fe.lhs(F1)
 NS_lin = fe.rhs(F1)

@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=CA120
-#SBATCH --output=out120.log
-#SBATCH --error=error120.log
+#SBATCH --job-name=ME
+#SBATCH --output=ME-out.log
+#SBATCH --error=error-ME.log
 #SBATCH --time=24:00:00
 #SBATCH --partition=standard
 #SBATCH --account=ec288-wetting
@@ -16,4 +16,4 @@ WORKDIR=$SLURM_SUBMIT_DIR
 
 # Bind the working directory into /root/shared inside the container
 singularity exec --bind $SLURM_SUBMIT_DIR:/root/shared $SIF \
-    bash -c "cd /root/shared && python3 NS-AC.py"
+    bash -c "cd /root/shared && python3 ME_code_modified.py"

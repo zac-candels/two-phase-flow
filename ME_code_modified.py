@@ -10,7 +10,7 @@ from array import *
 import scipy as sp
 import scipy.optimize
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
@@ -180,7 +180,7 @@ Wetting = fe.Expression('zeta*cos( Th00 )',
 c_var = fe.variable(c_nP1)
 f1 = 1/4*(1 - c_var**2)**2
 dfdc = fe.diff(f1, c_var)
-surf_ten_force = -c_n*fe.grad(mu_n)
+surf_ten_force = -c_nP1*fe.grad(mu_nP1)
 
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
