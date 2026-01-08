@@ -59,7 +59,7 @@ dt = 1.0e-02
 Za= fe.Constant(0.1)
 Cn = fe.Constant(0.01)
 k = fe.Constant(dt)
-We = fe.Constant(0.2)
+We = fe.Constant(0.02)
 Re = fe.Constant(1)
 Pe = fe.Constant(1/(3*Cn**2))
 
@@ -280,6 +280,8 @@ def droplet_solution(Tfinal, Nt, file_name):
         for bc in bcu: bc.apply(vel_update_mat, vel_update_rhs_vec)
         fe.solve(vel_update_mat, vel_nP1.vector(), vel_update_rhs_vec, "gmres", prec)
 
+        c_n.assign(c_nP1)
+        mu_n.assign(mu_nP1)
         vel_n.assign(vel_nP1)
         it += 1
         t += dt
