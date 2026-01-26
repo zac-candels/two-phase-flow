@@ -16,4 +16,4 @@ WORKDIR=$SLURM_SUBMIT_DIR
 
 # Bind the working directory into /root/shared inside the container
 singularity exec --bind $SLURM_SUBMIT_DIR:/root/shared $SIF \
-    bash -c "cd /root/shared && python3 NS-AC-mod.py"
+    bash -c "cd /root/shared && python3 NS-AC.py"

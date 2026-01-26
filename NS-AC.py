@@ -24,7 +24,7 @@ lamd = 1/6
 V = (2.4 + 0.1)*lamd**2
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"output_CA{theta_deg}")
+outDirName = os.path.join(WORKDIR, f"proper_nonDimensionalization_CA{theta_deg}")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -56,7 +56,6 @@ Y0 = d/np.tan(Th)
 
 dt = 1.0e-02
 
-Za= fe.Constant(0.1)
 Cn = fe.Constant(0.01)
 k = fe.Constant(dt)
 We = fe.Constant(0.02)
@@ -205,7 +204,7 @@ def mobility(phi_n):
     abs_grad_phi_n = fe.sqrt(fe.dot(grad_phi_n, grad_phi_n) + 1e-6)
     inv_abs_grad_phi_n = 1.0 / abs_grad_phi_n
     
-    mob = ( 1/Pe - Za*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    mob = (1/Pe)*( 1 - Cn*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
     return mob
     
 

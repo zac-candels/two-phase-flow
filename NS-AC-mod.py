@@ -31,7 +31,7 @@ L_x, L_y = 2*initDiam, 2*initDiam
 nx, ny = 100, 100
 Cn = 0.05
 sigma = 0.005 #0.1
-eps = Cn * 2*initDiam
+eps = Cn * initDiam
 
 center_init_x, center_init_y = L_x/2, initDiam/2 - 2
 
@@ -233,6 +233,7 @@ def droplet_solution(Tfinal, Nt, file_name):
     cfile = fe.File(file_name + "/Phasefield/result.pvd", "compressed")
     yfile = fe.File(file_name + "/Velocity/result.pvd", "compressed")
     pfile = fe.File(file_name + "/Pressure/result.pvd", "compressed")
+    mass_file = open("mass_file.dat", "w")
 
     NS_mat = fe.assemble(NS_bilin)
     pres_update_mat = fe.assemble(pres_update_bilin)
@@ -274,6 +275,11 @@ def droplet_solution(Tfinal, Nt, file_name):
         t += k
         
         if ctr % 100 == 0:
+
+            mass_tot = fe.assemble(c_n*fe.dx)
+            print("Total mass = ", mass_tot)
+            mass_file.write(f"total mass = {mass_tot}\n")
+            mass_file.flush()
             coords = mesh.coordinates()
             phi_vals = c_n.compute_vertex_values(mesh)
             triangles = mesh.cells()  # get mesh connectivity
@@ -299,10 +305,11 @@ def droplet_solution(Tfinal, Nt, file_name):
             yfile << vel_star
             pfile << p1
             itc += 1
+    mass_file.close()
 
 
 def main():
-    Tfinal = 1000
+    Tfinal = 10000
     Nsaved = 200
     droplet_solution(Tfinal, Nsaved, outDirName)
 
