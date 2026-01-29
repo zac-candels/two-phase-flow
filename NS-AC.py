@@ -17,11 +17,8 @@ fe.set_log_level(fe.LogLevel.ERROR)
 
 theta_deg = 30
 theta = theta_deg*np.pi/180
-sizeParam = 1.57
-epsc = 0.1
-epsT = 0.05
-lamd = 1/6
-V = (2.4 + 0.1)*lamd**2
+initDropDiam = 5
+L_x, L_y = 2*initDropDiam, 2*initDropDiam
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, f"proper_nonDimensionalization_CA{theta_deg}")
@@ -33,20 +30,20 @@ os.makedirs(outDirName, exist_ok=True)
 fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
-TT = 0.5
-RR = 1
+
+xc, yc = L_x/2, initDropDiam/2 - 2
 
 nx, ny = 200, 200
-h = np.min(RR/nx, TT/ny)
+h = min(L_x/nx, L_y/ny)
 domain_points = []
 
-mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT),
+mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
 dt1 = 0.1*h**2
 dt2 = 0.00001
-dt = np.min(dt1, dt2)
+dt = min(dt1, dt2)
 
 Cn = fe.Constant(0.02)
 k = fe.Constant(dt)
@@ -61,7 +58,7 @@ class PeriodicBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
         return bool(x[0] < fe.DOLFIN_EPS and x[0] > -fe.DOLFIN_EPS and on_boundary)
     def map(self, x, y):
-        y[0] = x[0] - RR
+        y[0] = x[0] - L_x
         y[1] = x[1]
 
 pbc = PeriodicBoundary()
@@ -92,9 +89,9 @@ mu_n = fe.Function(ME)
 class InitialConditions(fe.UserExpression):
     def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
         self.Cn_val = float(Cn_val)   # extract scalar
-        self.R0 = R0
-        self.x0 = x0
-        self.Y0 = Y0
+        self.R0 = initDropDiam/2
+        self.x0 = xc
+        self.Y0 = yc
         random.seed(2 + fe.MPI.rank(fe.MPI.comm_world))
         super().__init__(**kwargs)
 
@@ -111,9 +108,9 @@ class InitialConditions(fe.UserExpression):
 c_init_expr = fe.Expression(
     "0.5 - 0.5 * tanh( 2.0 * (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / eps )",
     degree=2,  # polynomial degree used for interpolation
-    xc=x0,
-    yc=Y0,
-    R=R0,
+    xc=xc,
+    yc=yc,
+    R=initDropDiam/2,
     eps=Cn
 )
 
@@ -123,11 +120,11 @@ c_n = fe.interpolate(c_init_expr, ME)
 
 class LowerBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and x[1] >= -abs(epsT*lamd) and x[1] <= abs(epsT*lamd)
+        return on_boundary and x[1] >= -abs(1e-3) and x[1] <= abs(1e-3)
 
 class TopBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and fe.near(x[1], TT)
+        return on_boundary and fe.near(x[1], L_y)
 
 class LeftBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
@@ -135,7 +132,7 @@ class LeftBoundary(fe.SubDomain):
 
 class RightBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and fe.near(x[0], RR)
+        return on_boundary and fe.near(x[0], L_x)
 
 mesh_function = fe.MeshFunction("size_t", mesh, mesh.topology().dim()-1)
 
