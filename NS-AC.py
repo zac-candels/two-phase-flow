@@ -29,30 +29,6 @@ matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
 
-def Radius(sizeParam, epsc, lamd, V):
-    arr = np.linspace(0, 10, 1000)
-    FF = np.zeros((arr.size))
-    c = 0
-    def F(x):
-        Th = sizeParam + epsc*np.cos(2*np.pi*x)
-        return V - (x**2/2)*(2*Th - np.sin(2*Th))/(np.sin(Th))**2
-    for idx in arr:
-        FF[c] = F(idx)
-        c += 1
-    F1 = FF[0:-1]*FF[1:]
-    filt = F1 < 0
-    R00 = arr[1:][filt]
-    rd = np.zeros(R00.size)
-    for i in range(R00.size):
-        rd[i] = sp.optimize.newton(F, R00[i])
-    return rd[0]
-
-d = Radius(sizeParam, epsc, lamd, V)
-
-x0 = 3.0*lamd
-Th = sizeParam + epsc*np.cos(2*np.pi*d)
-R0 = d/np.sin(Th)
-Y0 = d/np.tan(Th)
 
 fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
@@ -60,12 +36,12 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 TT = 0.5
 RR = 1
 
-domain_n_points = 200
-h = np.min(TT/domain_n_points, RR/ domain_n_points)
+nx, ny = 200, 200
+h = np.min(RR/nx, TT/ny)
 domain_points = []
 
 mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT),
-                        domain_n_points, domain_n_points, diagonal="crossed")
+                        nx, ny, diagonal="crossed")
 
 
 dt1 = 0.1*h**2
