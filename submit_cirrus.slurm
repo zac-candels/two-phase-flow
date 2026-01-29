@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=NS-AC
-#SBATCH --output=NS-AC-out.log
-#SBATCH --error=error-NSAC.log
+#SBATCH --job-name=NS-AC-mod
+#SBATCH --output=NS-AC-mod-out.log
+#SBATCH --error=error-NSAC-mod.log
 #SBATCH --time=24:00:00
 #SBATCH --partition=standard
 #SBATCH --account=ec288-wetting
@@ -16,4 +16,4 @@ WORKDIR=$SLURM_SUBMIT_DIR
 
 # Bind the working directory into /root/shared inside the container
 singularity exec --bind $SLURM_SUBMIT_DIR:/root/shared $SIF \
-    bash -c "cd /root/shared && python3 NS-AC.py"
+    bash -c "cd /root/shared && python3 NS-AC-mod.py"

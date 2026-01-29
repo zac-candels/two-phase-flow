@@ -54,25 +54,29 @@ Th = sizeParam + epsc*np.cos(2*np.pi*d)
 R0 = d/np.sin(Th)
 Y0 = d/np.tan(Th)
 
-dt = 1.0e-02
-
-Cn = fe.Constant(0.01)
-k = fe.Constant(dt)
-We = fe.Constant(0.02)
-Re = fe.Constant(1)
-Pe = fe.Constant(1/(3*Cn**2))
-
 fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 TT = 0.5
 RR = 1
 
-domain_n_points = 120
+domain_n_points = 200
+h = np.min(TT/domain_n_points, RR/ domain_n_points)
 domain_points = []
 
 mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(RR, TT),
-                        domain_n_points, domain_n_points)
+                        domain_n_points, domain_n_points, diagonal="crossed")
+
+
+dt1 = 0.1*h**2
+dt2 = 0.00001
+dt = np.min(dt1, dt2)
+
+Cn = fe.Constant(0.02)
+k = fe.Constant(dt)
+We = fe.Constant(0.02)
+Re = fe.Constant(1)
+Pe = fe.Constant(1/(3*Cn**2))
 
 mesh_file = fe.File("mesh.xml")
 mesh_file << mesh
