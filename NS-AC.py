@@ -18,7 +18,7 @@ fe.set_log_level(fe.LogLevel.ERROR)
 theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 5
-L_x, L_y = 2*initDropDiam, 2*initDropDiam
+L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, f"proper_nonDimensionalization_CA{theta_deg}")
@@ -33,7 +33,7 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 xc, yc = L_x/2, initDropDiam/2 - 2
 
-nx, ny = 200, 200
+nx, ny = 200, 90
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
@@ -274,6 +274,7 @@ def droplet_solution(Tfinal, Nt, file_name):
             plt.title(f"phi at t = {t:.2f}")
             plt.xlabel("x")
             plt.ylabel("y")
+            plt.gca().set_aspect('equal', adjustable='box')
             plt.tight_layout()
             
             # Save the figure to your output folder
