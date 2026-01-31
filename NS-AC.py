@@ -12,10 +12,13 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
 
+comm = fe.MPI.comm_world
+rank = fe.MPI.rank(comm)
+
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 30
+theta_deg = 90
 theta = theta_deg*np.pi/180
 initDropDiam = 5
 L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
@@ -33,7 +36,7 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 xc, yc = L_x/2, initDropDiam/2 - 2
 
-nx, ny = 200, 90
+nx, ny = 100, 50
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
@@ -41,18 +44,18 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt1 = 0.1*h**2
-dt2 = 0.00001
-dt = min(dt1, dt2)
+dt1 = 0.5*h**2
+dt = dt1 #min(dt1, dt2)
 
-Cn = fe.Constant(0.02)
+Cn = fe.Constant(2*h)
 k = fe.Constant(dt)
-We = fe.Constant(0.02)
-Re = fe.Constant(1)
-Pe = fe.Constant(1/(3*Cn**2))
+We = fe.Constant(0.01)
+Re = fe.Constant(0.05)
+Pe = fe.Constant(200)
 
-mesh_file = fe.File("mesh.xml")
-mesh_file << mesh
+if rank == 0:
+    mesh_file = fe.File("mesh.xml")
+    mesh_file << mesh
 
 class PeriodicBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
@@ -60,6 +63,12 @@ class PeriodicBoundary(fe.SubDomain):
     def map(self, x, y):
         y[0] = x[0] - L_x
         y[1] = x[1]
+        
+eval_pts_x = np.linspace(0, L_x, nx)
+eval_pts = []
+fn_pts = []
+for i in range(len(eval_pts_x)):
+    eval_pts.append( fe.Point(eval_pts_x[i], 0.1) )
 
 pbc = PeriodicBoundary()
 P1 = fe.FiniteElement("Lagrange", mesh.ufl_cell(), 1)
@@ -192,20 +201,20 @@ bilin_form_mu = mu_trial * v * fe.dx
 lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
-                + dt*Cn*np.cos(theta)*v*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
+                - dt*Cn*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
 lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
     + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
 
 
-F1 = (1/k)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
+F1 = (1/dt)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
      (1/Re)*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - (1/We)*fe.inner(surf_ten_force, w)*fe.dx
 
 NS_bilin = fe.lhs(F1)
 NS_lin = fe.rhs(F1)
 
 pres_update_bilin = fe.inner(fe.grad(p), fe.grad(r))*fe.dx
-pres_update_lin = -(1/k)*fe.div(vel_star)*r*fe.dx
+pres_update_lin = -(1/dt)*fe.div(vel_star)*r*fe.dx
 
 vel_update_bilin = fe.inner(vel_trial, w)*fe.dx
 vel_update_lin = fe.inner(vel_star, w)*fe.dx - k*fe.inner(fe.grad(p1), w)*fe.dx
@@ -262,26 +271,43 @@ def droplet_solution(Tfinal, Nt, file_name):
         it += 1
         t += dt
         
-        if ctr % 100 == 0:
-            coords = mesh.coordinates()
-            phi_vals = c_n.compute_vertex_values(mesh)
-            triangles = mesh.cells()  # get mesh connectivity
-            triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
-        
-            plt.figure(figsize=(6,5))
-            plt.tricontourf(triang, phi_vals, levels=90, cmap="RdBu_r")
-            plt.colorbar(label=r"$\phi$")
-            plt.title(f"phi at t = {t:.2f}")
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.gca().set_aspect('equal', adjustable='box')
-            plt.tight_layout()
+        if rank == 0:
+            if ctr % 100 == 0:
+                
+                fn_pts = []
+                for idx in range(len(eval_pts)):
+                    fn_pts.append( c_n(eval_pts[idx]) )
+                    
+                plt.figure()
+                plt.plot(eval_pts_x, fn_pts)
+                plt.xlabel(r"$x$")
+                plt.ylabel(r"$\phi$")
+                plt.title(f"phi at y = 0.1, t = {t}")
+                out_file = os.path.join(matPlotFigs, f"test_t{ctr:05d}.png")
+                plt.savefig(out_file, dpi=200)
+                #plt.show()
+                plt.close()
+                
+                
+                coords = mesh.coordinates()
+                phi_vals = c_n.compute_vertex_values(mesh)
+                triangles = mesh.cells()  # get mesh connectivity
+                triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
             
-            # Save the figure to your output folder
-            out_file = os.path.join(matPlotFigs, f"phi_t{ctr:05d}.png")
-            plt.savefig(out_file, dpi=200)
-            #plt.show()
-            plt.close()
+                plt.figure(figsize=(6,5))
+                plt.tricontourf(triang, phi_vals, levels=90, cmap="RdBu_r")
+                plt.colorbar(label=r"$\phi$")
+                plt.title(f"phi at t = {t:.2f}")
+                plt.xlabel("x")
+                plt.ylabel("y")
+                plt.gca().set_aspect('equal', adjustable='box')
+                plt.tight_layout()
+                
+                # Save the figure to your output folder
+                out_file = os.path.join(matPlotFigs, f"phi_t{ctr:05d}.png")
+                plt.savefig(out_file, dpi=200)
+                #plt.show()
+                plt.close()
 
         if t >= ts[itc]:
             cfile << (c_n, t)

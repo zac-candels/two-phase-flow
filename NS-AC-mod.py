@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
 
+comm = fe.MPI.comm_world
+rank = fe.MPI.rank(comm)
+
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
@@ -27,8 +30,8 @@ os.makedirs(outDirName, exist_ok=True)
 
 T = 1500
 initDiam = 5
-L_x, L_y = 2*initDiam, 2*initDiam
-nx, ny = 100, 100
+L_x, L_y = 2*initDiam, 1*initDiam
+nx, ny = 100, 50
 Cn = 0.05
 sigma = 0.005 #0.1
 eps = Cn * initDiam
@@ -59,8 +62,9 @@ domain_points = []
 mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal = "crossed")
 
-mesh_file = fe.File("mesh.xml")
-mesh_file << mesh
+if rank == 0:
+    mesh_file = fe.File("mesh.xml")
+    mesh_file << mesh
 
 class PeriodicBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
@@ -274,30 +278,32 @@ def droplet_solution(Tfinal, Nt, file_name):
         it += 1
         t += k
         
-        if ctr % 100 == 0:
-
-            mass_tot = fe.assemble(c_n*fe.dx)
-            print("Total mass = ", mass_tot)
-            mass_file.write(f"total mass = {mass_tot}\n")
-            mass_file.flush()
-            coords = mesh.coordinates()
-            phi_vals = c_n.compute_vertex_values(mesh)
-            triangles = mesh.cells()  # get mesh connectivity
-            triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
-        
-            plt.figure(figsize=(6,5))
-            plt.tricontourf(triang, phi_vals, levels=90, cmap="RdBu_r")
-            plt.colorbar(label=r"$\phi$")
-            plt.title(f"phi at t = {t:.2f}")
-            plt.xlabel("x")
-            plt.ylabel("y")
-            plt.tight_layout()
+        if rank == 0:
+            if ctr % 100 == 0:
+    
+                mass_tot = fe.assemble(c_n*fe.dx)
+                print("Total mass = ", mass_tot)
+                mass_file.write(f"total mass = {mass_tot}\n")
+                mass_file.flush()
+                coords = mesh.coordinates()
+                phi_vals = c_n.compute_vertex_values(mesh)
+                triangles = mesh.cells()  # get mesh connectivity
+                triang = tri.Triangulation(coords[:, 0], coords[:, 1], triangles)
             
-            # Save the figure to your output folder
-            out_file = os.path.join(matPlotFigs, f"phi_t{ctr:05d}.png")
-            plt.savefig(out_file, dpi=200)
-            #plt.show()
-            plt.close()
+                plt.figure(figsize=(6,5))
+                plt.tricontourf(triang, phi_vals, levels=90, cmap="RdBu_r")
+                plt.colorbar(label=r"$\phi$")
+                plt.title(f"phi at t = {t:.2f}")
+                plt.xlabel("x")
+                plt.ylabel("y")
+                plt.gca().set_aspect('equal', adjustable='box')
+                plt.tight_layout()
+                
+                # Save the figure to your output folder
+                out_file = os.path.join(matPlotFigs, f"phi_t{ctr:05d}.png")
+                plt.savefig(out_file, dpi=200)
+                #plt.show()
+                plt.close()
 
         if t >= ts[itc]:
             cfile << (c_n, t)
