@@ -18,10 +18,10 @@ rank = fe.MPI.rank(comm)
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 90
+theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 5
-L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
+L_x, L_y = 2*initDropDiam, 1*initDropDiam
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, f"proper_nonDimensionalization_CA{theta_deg}")
@@ -44,14 +44,13 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt1 = 0.5*h**2
-dt = dt1 #min(dt1, dt2)
+dt = h*0.1
 
-Cn = fe.Constant(2*h)
+Cn = fe.Constant(0.25)
 k = fe.Constant(dt)
-We = fe.Constant(0.01)
-Re = fe.Constant(0.05)
-Pe = fe.Constant(200)
+We = fe.Constant(0.02)
+Re = fe.Constant(1)
+Pe = fe.Constant(100)
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -190,7 +189,9 @@ def mobility(phi_n):
     abs_grad_phi_n = fe.sqrt(fe.dot(grad_phi_n, grad_phi_n) + 1e-6)
     inv_abs_grad_phi_n = 1.0 / abs_grad_phi_n
     
-    mob = (1/Pe)*( 1 - Cn*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    mob = (1/Pe)*( 1 - (1/Cn)*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    
+    #mob = 0.01*( 1 - (4/0.25)*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
     return mob
     
 
@@ -198,13 +199,16 @@ def mobility(phi_n):
 bilin_form_AC = c_trial * q * fe.dx
 bilin_form_mu = mu_trial * v * fe.dx
 
-lin_form_AC = c_n * q * fe.dx - dt*v*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
+lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
-                - dt*Cn*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
+                - dt*(1/Cn)*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
-lin_form_mu =  (1/Cn)*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
-    + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
+lin_form_mu =  (1/Cn)*( (1/4)*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+    + (0.01)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
+
+# lin_form_mu =  0.96*( (c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+#     + 0.001875*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
 
 
 F1 = (1/dt)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
@@ -274,19 +278,19 @@ def droplet_solution(Tfinal, Nt, file_name):
         if rank == 0:
             if ctr % 100 == 0:
                 
-                fn_pts = []
-                for idx in range(len(eval_pts)):
-                    fn_pts.append( c_n(eval_pts[idx]) )
+                # fn_pts = []
+                # for idx in range(len(eval_pts)):
+                #     fn_pts.append( c_n(eval_pts[idx]) )
                     
-                plt.figure()
-                plt.plot(eval_pts_x, fn_pts)
-                plt.xlabel(r"$x$")
-                plt.ylabel(r"$\phi$")
-                plt.title(f"phi at y = 0.1, t = {t}")
-                out_file = os.path.join(matPlotFigs, f"test_t{ctr:05d}.png")
-                plt.savefig(out_file, dpi=200)
-                #plt.show()
-                plt.close()
+                # plt.figure()
+                # plt.plot(eval_pts_x, fn_pts)
+                # plt.xlabel(r"$x$")
+                # plt.ylabel(r"$\phi$")
+                # plt.title(f"phi at y = 0.1, t = {t}")
+                # out_file = os.path.join(matPlotFigs, f"test_t{ctr:05d}.png")
+                # plt.savefig(out_file, dpi=200)
+                # #plt.show()
+                # plt.close()
                 
                 
                 coords = mesh.coordinates()
