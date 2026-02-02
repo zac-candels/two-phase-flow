@@ -18,13 +18,13 @@ rank = fe.MPI.rank(comm)
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 30
+theta_deg = 5
 theta = theta_deg*np.pi/180
-initDropDiam = 5
-L_x, L_y = 2*initDropDiam, 1*initDropDiam
+initDropDiam = 2
+L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"proper_nonDimensionalization_CA{theta_deg}")
+outDirName = os.path.join(WORKDIR, f"test")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -34,9 +34,9 @@ fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 
-xc, yc = L_x/2, initDropDiam/2 - 2
+xc, yc = L_x/2, initDropDiam/2 - 0.4*initDropDiam
 
-nx, ny = 100, 50
+nx, ny = 100, 40
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
@@ -46,7 +46,7 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
 
 dt = h*0.1
 
-Cn = fe.Constant(0.25)
+Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
 We = fe.Constant(0.02)
 Re = fe.Constant(1)
@@ -204,8 +204,8 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
                 - dt*(1/Cn)*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
-lin_form_mu =  (1/Cn)*( (1/4)*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
-    + (0.01)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
+lin_form_mu =  (1/(Cn*100))*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+    + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
 
 # lin_form_mu =  0.96*( (c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
 #     + 0.001875*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
@@ -227,7 +227,8 @@ c_mat = fe.assemble(bilin_form_AC)
 mu_mat = fe.assemble(bilin_form_mu)
 
 solver = fe.NewtonSolver()
-solver.parameters["linear_solver"] = "lu"
+solver.parameters["linear_solver"] = "gmres"
+
 solver.parameters["convergence_criterion"] = "incremental"
 solver.parameters["relative_tolerance"] = 1e-6
 
@@ -256,7 +257,7 @@ def droplet_solution(Tfinal, Nt, file_name):
         rhs_mu = fe.assemble(lin_form_mu)
         
         fe.solve(c_mat, c_nP1.vector(), rhs_AC)
-        fe.solve(mu_mat, mu_n.vector(), rhs_mu)
+        fe.solve(mu_mat, mu_nP1.vector(), rhs_mu)
 
         NS_rhs_vec = fe.assemble(NS_lin)
         for bc in bcu: bc.apply(NS_mat, NS_rhs_vec)
@@ -313,12 +314,12 @@ def droplet_solution(Tfinal, Nt, file_name):
                 #plt.show()
                 plt.close()
 
-        if t >= ts[itc]:
-            cfile << (c_n, t)
-            mfile << (mu_n, t)
-            yfile << vel_star
-            pfile << p1
-            itc += 1
+            if t >= ts[itc]:
+                cfile << (c_n, t)
+                mfile << (mu_n, t)
+                yfile << vel_star
+                pfile << p1
+                itc += 1
 
 
 def main():
