@@ -24,7 +24,7 @@ initDropDiam = 2
 L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"test")
+outDirName = os.path.join(WORKDIR, f"test_original_mu")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -44,7 +44,7 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt = h*0.1
+dt = h*0.001
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
@@ -204,7 +204,7 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
                 - dt*(1/Cn)*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
 
-lin_form_mu =  (1/(Cn*100))*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+lin_form_mu =  (1/(Cn))*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
     + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
 
 # lin_form_mu =  0.96*( (c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
