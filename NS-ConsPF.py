@@ -36,7 +36,7 @@ fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 xc, yc = L_x/2, initDropDiam/2 - 0.4*initDropDiam
 
-nx, ny = 100, 40
+nx, ny = 80, 35
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
