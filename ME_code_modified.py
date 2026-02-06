@@ -278,6 +278,7 @@ def droplet_solution(Tfinal, Nt, file_name):
             plt.title(f"phi at t = {t:.2f}")
             plt.xlabel("x")
             plt.ylabel("y")
+            plt.gca().set_aspect('equal', adjustable='box')
             plt.tight_layout()
             
             # Save the figure to your output folder

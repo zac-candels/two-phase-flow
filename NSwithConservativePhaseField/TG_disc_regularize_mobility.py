@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
+from ufl import min_value, max_value
 
 comm = fe.MPI.comm_world
 rank = fe.MPI.rank(comm)
@@ -24,7 +25,7 @@ initDropDiam = 2
 L_x, L_y = 2.5*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"test_original_mu")
+outDirName = os.path.join(WORKDIR, f"regularize_mobility")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -183,17 +184,25 @@ surf_ten_force = -c_n*fe.grad(mu_n)
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
 
-def mobility(phi_n):
-    grad_phi_n = fe.grad(phi_n)
+def mobility(phi):
+    grad_phi = fe.grad(phi)
     
-    abs_grad_phi_n = fe.sqrt(fe.dot(grad_phi_n, grad_phi_n) + 1e-6)
-    inv_abs_grad_phi_n = 1.0 / abs_grad_phi_n
+    # Regularization scale consistent with interface thickness
+    delta = 0.05 / Cn    # tune 0.02–0.1
     
-    mob = (1/Pe)*( 1 - (1/Cn)*4*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    abs_grad_phi = fe.sqrt(fe.dot(grad_phi, grad_phi) + delta**2)
     
-    #mob = 0.01*( 1 - (4/0.25)*phi_n*(1 - phi_n) * inv_abs_grad_phi_n )
+    ratio = (4.0 * phi * (1.0 - phi)) / (Cn * abs_grad_phi)
+    
+    # Optional but strongly recommended
+    ratio = min_value(ratio, 1.5)
+    
+    mob = (1.0 / Pe) * (1.0 - ratio)
+    
+    # Prevent negative mobility
+    mob = max_value(mob, 0.0)
+    
     return mob
-    
 
 
 bilin_form_AC = c_trial * q * fe.dx
@@ -230,7 +239,7 @@ solver = fe.NewtonSolver()
 solver.parameters["linear_solver"] = "gmres"
 
 solver.parameters["convergence_criterion"] = "incremental"
-solver.parameters["relative_tolerance"] = 1e-6
+solver.parameters["relative_tolerance"] = 1e-7
 
 prec = "amg" if fe.has_krylov_solver_preconditioner("amg") else "default"
 
@@ -300,8 +309,8 @@ def droplet_solution(Tfinal, Nt, file_name):
                 
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
-                mass_diff = total_mass - mass_init 
-                print("mass diff is ", abs(mass_diff), "\n\n")
+                mass_diff = mass_bulk - mass_init 
+                print("mass diff is ", np.abs(mass_diff), "\n\n")
                 
                 
                 coords = mesh.coordinates()
