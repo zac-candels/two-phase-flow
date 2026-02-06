@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
+from ufl import min_value, max_value
 
 comm = fe.MPI.comm_world
 rank = fe.MPI.rank(comm)
@@ -18,13 +19,13 @@ rank = fe.MPI.rank(comm)
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 5
+theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 2
 L_x, L_y = 2.5*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"test_NSAC")
+outDirName = os.path.join(WORKDIR, f"NS-AC")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -44,7 +45,7 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt = h*0.0005
+dt = h*0.001
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
@@ -173,24 +174,42 @@ bottom.mark(boundaries, 1)   # assign ID = 1 to bottom boundary
 ds_bottom = fe.Measure("ds", domain=mesh, subdomain_data=boundaries, subdomain_id=1)
 
 
+zeta = np.sqrt(2)/3
+Wetting = fe.Expression('zeta*cos( theta )',
+                     zeta=zeta, theta=theta, degree=1)
+
+
 surf_ten_force = -c_n*fe.grad(mu_n)
 
 def epsilon(u):
     return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
 
+def massConservation(c_n):
     
+    grad_c = fe.grad(c_n)
+    
+    term1 = (1/Cn)*fe.assemble(4*c_n*(1-c_n)*fe.dx )
+    
+    term2 = Cn*fe.assemble( fe.dot(grad_c,n) * ds) 
+    
+    dxx = fe.Measure("dx", domain=mesh)
+    volume = fe.assemble(1*dxx)
+    
+    return (term1 + term2) / volume 
+
 
 
 bilin_form_AC = c_trial * q * fe.dx
 bilin_form_mu = mu_trial * v * fe.dx
 
 lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
-    - dt*fe.dot(fe.grad(q), mobility(c_n)*fe.grad(c_n))*fe.dx\
-        - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx\
-                - dt*(1/Cn)*np.cos(theta)*q*mobility(c_n)*4*c_n*(1 - c_n)*ds_bottom
+    - dt*(1/Pe)*q*mu_n*fe.dx\
+        - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
 
-lin_form_mu =  (1/(Cn))*( 48*(c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
-    + (3/2)*Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx )
+lin_form_mu =  (1/(Cn))*( (c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+    + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
+        + Cn*np.cos(theta)*4*c_n*(1-c_n)*v*fe.dx + massConservation(c_n)*v*fe.dx)
+
 
 
 
@@ -213,7 +232,7 @@ solver = fe.NewtonSolver()
 solver.parameters["linear_solver"] = "gmres"
 
 solver.parameters["convergence_criterion"] = "incremental"
-solver.parameters["relative_tolerance"] = 1e-6
+solver.parameters["relative_tolerance"] = 1e-7
 
 prec = "amg" if fe.has_krylov_solver_preconditioner("amg") else "default"
 
@@ -233,6 +252,8 @@ def droplet_solution(Tfinal, Nt, file_name):
     itc = 0
 
     ctr = -1
+    
+    mass_init = fe.assemble(c_n*fe.dx)
     while t < Tfinal:
         ctr +=1
         
@@ -275,6 +296,14 @@ def droplet_solution(Tfinal, Nt, file_name):
                 # plt.savefig(out_file, dpi=200)
                 # #plt.show()
                 # plt.close()
+                
+                mass_bulk = fe.assemble(c_n*fe.dx)
+                mass_bdy = fe.assemble(c_n*ds_bottom)
+                
+                total_mass = mass_bulk
+                print("total mass is ", total_mass)
+                mass_diff = mass_bulk - mass_init 
+                print("mass diff is ", np.abs(mass_diff), "\n\n")
                 
                 
                 coords = mesh.coordinates()
