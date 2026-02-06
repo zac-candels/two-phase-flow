@@ -18,10 +18,10 @@ rank = fe.MPI.rank(comm)
 fe.parameters["std_out_all_processes"] = False
 fe.set_log_level(fe.LogLevel.ERROR)
 
-theta_deg = 5
+theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 2
-L_x, L_y = 2*initDropDiam, 0.8*initDropDiam
+L_x, L_y = 2.5*initDropDiam, 0.8*initDropDiam
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, f"test_original_mu")
@@ -292,6 +292,12 @@ def droplet_solution(Tfinal, Nt, file_name):
                 # plt.savefig(out_file, dpi=200)
                 # #plt.show()
                 # plt.close()
+                
+                mass_bulk = fe.assemble(c_n*fe.dx)
+                mass_bdy = fe.assemble(c_n*ds_bottom)
+                
+                total_mass = mass_bulk + mass_bdy
+                print("total mass is ", total_mass)
                 
                 
                 coords = mesh.coordinates()
