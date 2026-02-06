@@ -310,7 +310,8 @@ def droplet_solution(Tfinal, Nt, file_name):
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
                 mass_diff = mass_bulk - mass_init 
-                print("mass diff is ", np.abs(mass_diff), "\n\n")
+                print("mass diff is ", np.abs(mass_diff))
+                print("percent change in mass is ", 100*np.abs(mass_diff)/mass_init, "\n\n")
                 
                 
                 coords = mesh.coordinates()

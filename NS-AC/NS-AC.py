@@ -49,9 +49,9 @@ dt = h*0.001
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
-We = fe.Constant(0.02)
-Re = fe.Constant(1)
-Pe = fe.Constant(100)
+We = fe.Constant(1)
+Re = fe.Constant(0.1)
+Pe = fe.Constant(20)
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -303,7 +303,8 @@ def droplet_solution(Tfinal, Nt, file_name):
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
                 mass_diff = mass_bulk - mass_init 
-                print("mass diff is ", np.abs(mass_diff), "\n\n")
+                print("mass diff is ", np.abs(mass_diff) )
+                print("percent change in mass is ", 100*np.abs(mass_diff)/mass_init, "\n\n")
                 
                 
                 coords = mesh.coordinates()
