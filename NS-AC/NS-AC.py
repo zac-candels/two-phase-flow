@@ -51,7 +51,7 @@ Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
 We = fe.Constant(1)
 Re = fe.Constant(0.1)
-Pe = fe.Constant(20)
+Pe = fe.Constant(2)
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -115,7 +115,7 @@ class InitialConditions(fe.UserExpression):
     
     
 c_init_expr = fe.Expression(
-    "0.5 - 0.5 * tanh( 2.0 * (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / eps )",
+    "-tanh( (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / (sqrt(2)*eps) )",
     degree=2,  # polynomial degree used for interpolation
     xc=xc,
     yc=yc,
@@ -206,9 +206,9 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*(1/Pe)*q*mu_n*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
 
-lin_form_mu =  (1/(Cn))*( (c_n - 1)*(c_n - 0)*(c_n - 0.5)*v*fe.dx\
+lin_form_mu =  (1/Cn)*( c_n*(c_n - 1)**2*v*fe.dx\
     + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + Cn*np.cos(theta)*4*c_n*(1-c_n)*v*fe.dx + massConservation(c_n)*v*fe.dx)
+        + Cn*np.cos(theta)*(1-c_n)**2/(np.sqrt(2))*v*fe.dx ) #+ massConservation(c_n)*v*fe.dx)
 
 
 
@@ -303,8 +303,9 @@ def droplet_solution(Tfinal, Nt, file_name):
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
                 mass_diff = mass_bulk - mass_init 
-                print("mass diff is ", np.abs(mass_diff) )
-                print("percent change in mass is ", 100*np.abs(mass_diff)/mass_init, "\n\n")
+                print("mass diff is ", (mass_diff) )
+                print("percent change in mass is ", 100*(mass_diff)/mass_init)
+                print("max(phi) = ", c_n.vector().max(), "\n\n" )
                 
                 
                 coords = mesh.coordinates()
