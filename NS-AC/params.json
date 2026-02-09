@@ -1,0 +1,12 @@
+{
+  "R0": 1,
+  "nx": 80,
+  "ny": 60,
+  "beta": 1,
+  "Pe": 1,
+  "Re": 0.1,
+  "Cn": 0.05,
+  "We": 1,
+  "theta_E": 30,
+  "initShape": "circle"
+}

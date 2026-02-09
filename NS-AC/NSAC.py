@@ -14,7 +14,8 @@ import os
 import json
 #from ufl import min_value, max_value
 
-def dropletSim():
+def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_param,
+               Pe_param, beta_param, initShape, testType, dataDir):
     
     with open("params.json", "r") as f:
         params = json.load(f)
@@ -25,13 +26,12 @@ def dropletSim():
     fe.parameters["std_out_all_processes"] = False
     fe.set_log_level(fe.LogLevel.ERROR)
     
-    theta_deg = params["theta_E"]
+    theta_deg = theta_E
     theta = theta_deg*np.pi/180
-    initDropDiam = 2*params["R0"]
-    L_x, L_y = 2.5*initDropDiam, 1*initDropDiam
+    initDropDiam = 2*R0
     
     WORKDIR = os.getcwd()
-    outDirName = os.path.join(WORKDIR, f"NS-AC-mass-conservation")
+    outDirName = os.path.join(WORKDIR, dataDir)
     matPlotFigs = outDirName + "/matPlotFigs"
     os.makedirs(matPlotFigs, exist_ok=True)
     os.makedirs(outDirName, exist_ok=True)
@@ -41,11 +41,7 @@ def dropletSim():
     fe.parameters["form_compiler"]["cpp_optimize"] = True
     
     
-    xc, yc = L_x/2, initDropDiam/2 - 0.3*initDropDiam
-    
-    nx, ny = params["nx"], params["ny"]
     h = min(L_x/nx, L_y/ny)
-    domain_points = []
     
     mesh = fe.RectangleMesh(comm, fe.Point(0, 0), fe.Point(L_x, L_y),
                             nx, ny, diagonal="crossed")
@@ -54,12 +50,12 @@ def dropletSim():
     dt = h*0.001
     Nt = int(Tfinal/dt)
     
-    Cn = initDropDiam * params["Cn"]
+    Cn = initDropDiam * Cn_param
     k = fe.Constant(dt)
-    We = fe.Constant(params["We"])
-    Re = fe.Constant(params["Re"])
-    Pe = fe.Constant(params["Pe"])
-    beta=0.00000001
+    We = fe.Constant(We_param)
+    Re = fe.Constant(Re_param)
+    Pe = fe.Constant(Pe_param)
+    beta = beta_param
     
     if rank == 0:
         mesh_file = fe.File("mesh.xml")
@@ -103,34 +99,28 @@ def dropletSim():
     c_n = fe.Function(ME)
     mu_n = fe.Function(ME)
     
-    class InitialConditions(fe.UserExpression):
-        def __init__(self, Cn_val, R0, x0, Y0, **kwargs):
-            self.Cn_val = float(Cn_val)   # extract scalar
-            self.R0 = initDropDiam/2
-            self.x0 = xc
-            self.Y0 = yc
-            random.seed(2 + fe.MPI.rank(fe.MPI.comm_world))
-            super().__init__(**kwargs)
-    
-        def eval(self, values, x):
-            r = np.sqrt((x[0] - self.x0)**2 + (x[1] )**2)
-            dist = r - self.R0
-            values[0] = -np.tanh(dist / (np.sqrt(2) * 0.01))
-            values[1] = 0.0
-    
-        def value_shape(self):
-            return (2,)
         
         
-    c_init_expr = fe.Expression(
-        "-tanh( (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / (sqrt(2)*eps) )",
-        degree=2,  # polynomial degree used for interpolation
-        xc=xc,
-        yc=yc,
-        R=initDropDiam/2,
-        eps=Cn
-    )
-    
+    if initShape == "circle":
+        c_init_expr = fe.Expression(
+            "-tanh( (sqrt(pow(x[0]-xc,2) + pow(x[1]-yc,2)) - R) / (sqrt(2)*eps) )",
+            degree=2,  # polynomial degree used for interpolation
+            xc=xc,
+            yc=yc,
+            R=initDropDiam/2,
+            eps=Cn
+        )
+        
+    elif initShape == "square":
+        c_init_expr = fe.Expression(
+            "-tanh( (max(fabs(x[0]-xc), fabs(x[1]-yc)) - R) / (sqrt(2)*eps) )",
+            degree=2,  # polynomial degree used for interpolation
+            xc=xc,
+            yc=yc,
+            R=initDropDiam/2,
+            eps=Cn
+        )
+        
     c_n = fe.interpolate(c_init_expr, ME)
     c_0 = fe.interpolate(c_init_expr, ME)
     mass_diff = fe.Constant(0.0)
@@ -294,21 +284,22 @@ def dropletSim():
         t += dt
         
         if rank == 0:
-            if ctr % 100 == 0:
+            if ctr % 10 == 0:
                 
-                # fn_pts = []
-                # for idx in range(len(eval_pts)):
-                #     fn_pts.append( c_n(eval_pts[idx]) )
-                    
-                # plt.figure()
-                # plt.plot(eval_pts_x, fn_pts)
-                # plt.xlabel(r"$x$")
-                # plt.ylabel(r"$\phi$")
-                # plt.title(f"phi at y = 0.1, t = {t}")
-                # out_file = os.path.join(matPlotFigs, f"test_t{ctr:05d}.png")
-                # plt.savefig(out_file, dpi=200)
-                # #plt.show()
-                # plt.close()
+                if testType == "equil":
+                    fn_pts = []
+                    for idx in range(len(eval_pts)):
+                        fn_pts.append( c_n(eval_pts[idx]) )
+                        
+                    plt.figure()
+                    plt.plot(eval_pts_x, fn_pts)
+                    plt.xlabel(r"$x$")
+                    plt.ylabel(r"$\phi$")
+                    plt.title(f"phi at y = 0.1, t = {t}")
+                    out_file = os.path.join(matPlotFigs, f"test_t{ctr:05d}.png")
+                    plt.savefig(out_file, dpi=200)
+                    #plt.show()
+                    plt.close()
                 
                 mass_bulk = fe.assemble(c_n*fe.dx)
                 mass_bdy = fe.assemble(c_n*ds_bottom)
