@@ -52,7 +52,7 @@ k = fe.Constant(dt)
 We = fe.Constant(1)
 Re = fe.Constant(0.1)
 Pe = fe.Constant(1)
-beta=1
+beta=0.00000001
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -130,7 +130,6 @@ mass_diff = fe.Constant(0.0)
 
 
 
-
 class LowerBoundary(fe.SubDomain):
     def inside(self, x, on_boundary):
         return on_boundary and x[1] >= -abs(1e-3) and x[1] <= abs(1e-3)
@@ -205,17 +204,17 @@ def massConsSeb(c):
     
     c_grad = fe.grad(c)
 
-    grad_c_mag = fe.sqrt( fe.dot(c_grad, c_grad) )
+    grad_c_mag = fe.sqrt( fe.dot(fe.grad(c), fe.grad(c)) )
     
     return grad_c_mag * mass_diff
 
-
+ #(beta/dt)*massConsSeb(c_n)*q*fe.dx\
 
 bilin_form_AC = c_trial * q * fe.dx
 bilin_form_mu = mu_trial * v * fe.dx
 
 lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
-    - dt*(1/Pe)*q*mu_n*fe.dx + (beta/dt)*massConsSeb(c_n)*q*fe.dx\
+    - dt*(1/Pe)*q*mu_n*fe.dx - (beta/dt)*mass_diff*fe.sqrt( fe.dot(fe.grad(c_n), fe.grad(c_n)) )*q*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
 
 lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
@@ -263,6 +262,7 @@ def droplet_solution(Tfinal, Nt, file_name):
     ts = np.linspace(0, Tfinal, Nt)
     itc = 0
 
+
     ctr = -1
     
     mass_init = fe.assemble(c_n*fe.dx)
@@ -290,7 +290,9 @@ def droplet_solution(Tfinal, Nt, file_name):
         mu_n.assign(mu_nP1)
         vel_n.assign(vel_nP1)
         mass_n = fe.assemble(c_n*fe.dx)
-        mass_diff = (mass_n - mass_init)
+        mass_diff.assign( (mass_n - mass_init) )
+        
+
         it += 1
         t += dt
         
@@ -317,9 +319,9 @@ def droplet_solution(Tfinal, Nt, file_name):
                 
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
-                mass_diff = mass_bulk - mass_init 
-                print("mass diff is ", (mass_diff) )
-                print("percent change in mass is ", 100*(mass_diff)/mass_init)
+                #mass_diff = mass_bulk - mass_init 
+                print("mass diff is ", float(mass_diff) )
+                print("percent change in mass is ", 100*float(mass_diff)/mass_init)
                 print("max(phi) = ", c_n.vector().max(), "\n\n" )
                 
                 
