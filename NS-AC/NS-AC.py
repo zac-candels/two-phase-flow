@@ -22,10 +22,10 @@ fe.set_log_level(fe.LogLevel.ERROR)
 theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 2
-L_x, L_y = 2.5*initDropDiam, 0.8*initDropDiam
+L_x, L_y = 2.5*initDropDiam, 1*initDropDiam
 
 WORKDIR = os.getcwd()
-outDirName = os.path.join(WORKDIR, f"NS-AC")
+outDirName = os.path.join(WORKDIR, f"NS-AC-mass-conservation")
 matPlotFigs = outDirName + "/matPlotFigs"
 os.makedirs(matPlotFigs, exist_ok=True)
 os.makedirs(outDirName, exist_ok=True)
@@ -35,9 +35,9 @@ fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 
-xc, yc = L_x/2, initDropDiam/2 - 0.5*initDropDiam
+xc, yc = L_x/2, initDropDiam/2 - 0.3*initDropDiam
 
-nx, ny = 80, 35
+nx, ny = 80, 60
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
@@ -45,7 +45,7 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt = h*0.005
+dt = h*0.001
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
@@ -188,9 +188,9 @@ def massConservation(c_n):
     
     grad_c = fe.grad(c_n)
     
-    term1 = fe.assemble(c_n*(c_n**2-1)*fe.dx )
+    term1 = (1/Cn)*fe.assemble(c_n*(c_n**2-1)*fe.dx )
     
-    term2 = Cn*fe.assemble( fe.dot(grad_c,n) * ds) 
+    term2 = fe.assemble( fe.dot(grad_c,n) * ds_bottom) 
     
     dxx = fe.Measure("dx", domain=mesh)
     volume = fe.assemble(1*dxx)
@@ -208,7 +208,7 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
 
 lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
     + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*fe.dx + massConservation(c_n)*v*fe.dx)
+        + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*ds_bottom + massConservation(c_n)*v*fe.dx )
 
 
 
