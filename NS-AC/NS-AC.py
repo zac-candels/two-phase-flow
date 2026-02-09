@@ -45,13 +45,13 @@ mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
-dt = h*0.001
+dt = h*0.005
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
 We = fe.Constant(1)
 Re = fe.Constant(0.1)
-Pe = fe.Constant(2)
+Pe = fe.Constant(1)
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -188,14 +188,14 @@ def massConservation(c_n):
     
     grad_c = fe.grad(c_n)
     
-    term1 = (1/Cn)*fe.assemble(4*c_n*(1-c_n)*fe.dx )
+    term1 = (1/Cn)*fe.assemble(c_n*(c_n**2-1)*fe.dx )
     
     term2 = Cn*fe.assemble( fe.dot(grad_c,n) * ds) 
     
     dxx = fe.Measure("dx", domain=mesh)
     volume = fe.assemble(1*dxx)
     
-    return (term1 + term2) / volume 
+    return (-term1 + term2) / volume 
 
 
 
@@ -206,9 +206,9 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
     - dt*(1/Pe)*q*mu_n*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
 
-lin_form_mu =  (1/Cn)*( c_n*(c_n - 1)**2*v*fe.dx\
+lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
     + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + Cn*np.cos(theta)*(1-c_n)**2/(np.sqrt(2))*v*fe.dx ) #+ massConservation(c_n)*v*fe.dx)
+        + 0.001*Cn*np.cos(theta)*(1-c_n)**2/(np.sqrt(2))*v*fe.dx + massConservation(c_n)*v*fe.dx)
 
 
 
