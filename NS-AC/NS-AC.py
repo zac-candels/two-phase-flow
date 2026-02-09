@@ -35,7 +35,7 @@ fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 
-xc, yc = L_x/2, initDropDiam/2 - 0.4*initDropDiam
+xc, yc = L_x/2, initDropDiam/2 - 0.5*initDropDiam
 
 nx, ny = 80, 35
 h = min(L_x/nx, L_y/ny)
@@ -188,7 +188,7 @@ def massConservation(c_n):
     
     grad_c = fe.grad(c_n)
     
-    term1 = (1/Cn)*fe.assemble(c_n*(c_n**2-1)*fe.dx )
+    term1 = fe.assemble(c_n*(c_n**2-1)*fe.dx )
     
     term2 = Cn*fe.assemble( fe.dot(grad_c,n) * ds) 
     
@@ -208,7 +208,7 @@ lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
 
 lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
     + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + 0.001*Cn*np.cos(theta)*(1-c_n)**2/(np.sqrt(2))*v*fe.dx + massConservation(c_n)*v*fe.dx)
+        + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*fe.dx + massConservation(c_n)*v*fe.dx)
 
 
 
