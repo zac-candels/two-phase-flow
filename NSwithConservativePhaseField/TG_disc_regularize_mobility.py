@@ -22,7 +22,7 @@ fe.set_log_level(fe.LogLevel.ERROR)
 theta_deg = 30
 theta = theta_deg*np.pi/180
 initDropDiam = 2
-L_x, L_y = 2.5*initDropDiam, 0.8*initDropDiam
+L_x, L_y = 2.5*initDropDiam, 1*initDropDiam
 
 WORKDIR = os.getcwd()
 outDirName = os.path.join(WORKDIR, f"regularize_mobility")
@@ -35,9 +35,9 @@ fe.parameters["form_compiler"]["optimize"] = True
 fe.parameters["form_compiler"]["cpp_optimize"] = True
 
 
-xc, yc = L_x/2, initDropDiam/2 - 0.4*initDropDiam
+xc, yc = L_x/2, initDropDiam/2 - 0.3*initDropDiam
 
-nx, ny = 80, 35
+nx, ny = 80, 60
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
@@ -49,9 +49,9 @@ dt = h*0.001
 
 Cn = initDropDiam * 0.05
 k = fe.Constant(dt)
-We = fe.Constant(0.02)
-Re = fe.Constant(1)
-Pe = fe.Constant(100)
+We = fe.Constant(1)
+Re = fe.Constant(0.1)
+Pe = fe.Constant(1)
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")

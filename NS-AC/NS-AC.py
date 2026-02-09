@@ -52,6 +52,7 @@ k = fe.Constant(dt)
 We = fe.Constant(1)
 Re = fe.Constant(0.1)
 Pe = fe.Constant(1)
+beta=1
 
 if rank == 0:
     mesh_file = fe.File("mesh.xml")
@@ -124,6 +125,9 @@ c_init_expr = fe.Expression(
 )
 
 c_n = fe.interpolate(c_init_expr, ME)
+c_0 = fe.interpolate(c_init_expr, ME)
+mass_diff = fe.Constant(0.0)
+
 
 
 
@@ -190,12 +194,20 @@ def massConservation(c_n):
     
     term1 = (1/Cn)*fe.assemble(c_n*(c_n**2-1)*fe.dx )
     
-    term2 = fe.assemble( fe.dot(grad_c,n) * ds_bottom) 
+    term2 = (1/np.sqrt(2)*Cn)*fe.assemble( fe.dot(grad_c,n) * ds_bottom) 
     
     dxx = fe.Measure("dx", domain=mesh)
     volume = fe.assemble(1*dxx)
     
     return (-term1 + term2) / volume 
+
+def massConsSeb(c):
+    
+    c_grad = fe.grad(c)
+
+    grad_c_mag = fe.sqrt( fe.dot(c_grad, c_grad) )
+    
+    return grad_c_mag * mass_diff
 
 
 
@@ -203,12 +215,12 @@ bilin_form_AC = c_trial * q * fe.dx
 bilin_form_mu = mu_trial * v * fe.dx
 
 lin_form_AC = c_n * q * fe.dx - dt*q*fe.dot(vel_n, fe.grad(c_n))*fe.dx\
-    - dt*(1/Pe)*q*mu_n*fe.dx\
+    - dt*(1/Pe)*q*mu_n*fe.dx + (beta/dt)*massConsSeb(c_n)*q*fe.dx\
         - 0.5*dt**2 * fe.dot(vel_n, fe.grad(q)) * fe.dot(vel_n, fe.grad(c_n)) *fe.dx
 
 lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
     + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-        + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*ds_bottom + massConservation(c_n)*v*fe.dx )
+        + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*ds_bottom  )
 
 
 
@@ -277,6 +289,8 @@ def droplet_solution(Tfinal, Nt, file_name):
         c_n.assign(c_nP1)
         mu_n.assign(mu_nP1)
         vel_n.assign(vel_nP1)
+        mass_n = fe.assemble(c_n*fe.dx)
+        mass_diff = (mass_n - mass_init)
         it += 1
         t += dt
         
@@ -299,6 +313,7 @@ def droplet_solution(Tfinal, Nt, file_name):
                 
                 mass_bulk = fe.assemble(c_n*fe.dx)
                 mass_bdy = fe.assemble(c_n*ds_bottom)
+                
                 
                 total_mass = mass_bulk
                 print("total mass is ", total_mass)
