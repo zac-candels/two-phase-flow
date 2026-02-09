@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
-from ufl import min_value, max_value
+#from ufl import min_value, max_value
 
 comm = fe.MPI.comm_world
 rank = fe.MPI.rank(comm)
@@ -41,7 +41,7 @@ nx, ny = 80, 60
 h = min(L_x/nx, L_y/ny)
 domain_points = []
 
-mesh = fe.RectangleMesh(fe.Point(0, 0), fe.Point(L_x, L_y),
+mesh = fe.RectangleMesh(comm, fe.Point(0, 0), fe.Point(L_x, L_y),
                         nx, ny, diagonal="crossed")
 
 
@@ -358,6 +358,5 @@ def main():
     Nsaved = 200
     droplet_solution(Tfinal, Nsaved, outDirName)
 
-if __name__ == "__main__":
-    main()
+main()
 
