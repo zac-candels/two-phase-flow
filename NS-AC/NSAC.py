@@ -15,7 +15,7 @@ import json
 #from ufl import min_value, max_value
 
 def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_param,
-               Pe_param, beta_param, initShape, testType, dataDir):
+               Pe_param, beta_param, bodyForceMag, initShape, testType, dataDir):
     
     with open("params.json", "r") as f:
         params = json.load(f)
@@ -176,6 +176,7 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     
 
     surf_ten_force = -c_n*fe.grad(mu_n)
+    body_force = fe.Constant((bodyForceMag, 0.0))
     
     def epsilon(u):
         return 0.5*(fe.nabla_grad(u) + fe.nabla_grad(u).T)
@@ -205,13 +206,14 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     
     lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
         + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-            + (1/np.sqrt(2)*Cn)*np.cos(theta)*(c_n**2 -1)*v*ds_bottom  )
+           - (1/(np.sqrt(2)*Cn) )*np.cos(theta)*(1 - c_n**2)*v*ds_bottom  )
     
     
     
     
     F1 = (1/dt)*fe.inner(vel_trial - vel_n, w)*fe.dx + fe.inner(fe.grad(vel_n)*vel_n, w)*fe.dx + \
-         (1/Re)*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - (1/We)*fe.inner(surf_ten_force, w)*fe.dx
+         (1/Re)*fe.inner(2*epsilon(vel_trial), epsilon(w))*fe.dx - (1/We)*fe.inner(surf_ten_force, w)*fe.dx\
+         + fe.inner(body_force, w)*fe.dx
     
     NS_bilin = fe.lhs(F1)
     NS_lin = fe.rhs(F1)
@@ -333,12 +335,12 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
                 #plt.show()
                 plt.close()
     
-            if t >= ts[itc]:
-                cfile << (c_n, t)
-                mfile << (mu_n, t)
-                yfile << vel_star
-                pfile << p1
-                itc += 1
+            # if t >= ts[itc]:
+            #     cfile << (c_n, t)
+            #     mfile << (mu_n, t)
+            #     yfile << vel_star
+            #     pfile << p1
+            #     itc += 1
     
 
 

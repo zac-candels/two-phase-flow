@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=NSAC
-#SBATCH --output=out.log
-#SBATCH --error=err.log
+#SBATCH --job-name=MCA
+#SBATCH --output=MCA_out.log
+#SBATCH --error=MCA_err.log
 #SBATCH --time=24:00:00
 
 #SBATCH --nodes=4
-#SBATCH --ntasks-per-node=3     # MPI ranks per node (adjust)
+#SBATCH --ntasks-per-node=2    # MPI ranks per node (adjust)
 #SBATCH --cpus-per-task=1
 
 #SBATCH --partition=standard
@@ -31,4 +31,4 @@ srun --distribution=block:block --hint=nomultithread \
      singularity exec \
      --bind $WORKDIR:/root/shared \
      $SIF \
-     python3 /root/shared/NS-AC.py
+     python3 /root/shared/run_test.py

@@ -2,9 +2,13 @@ import numpy as np
 import NSAC
 
 def runDropletSim():
+
+    # Spreading dynamics, vary Peclet number logarithmically. See where things are stable
+    # Push droplet, see if things look ok. This means applying a horizontal body force to NS equations.
+    # Start with \theta_D = \theta_E, see if things change (they shouldn't).
     
     R0 = 2
-    L_x = 5*R0
+    L_x = 6*R0
     L_y = 2*R0
     nx = 80
     ny = 60
@@ -13,10 +17,12 @@ def runDropletSim():
     Re = 0.1
     Cn = 0.05
     We = 1
-    theta_E = 60
+    bodyForceMag = 0
+    theta_E = 30
     initShape = "circle"
-    testType = "equil"
+    testType = "measureCA"
     xc = L_x/2
+
     if testType == "measureCA":
         yc = R0 - 0.6*R0
     elif testType == "square":
@@ -24,10 +30,13 @@ def runDropletSim():
     elif testType == "equil":
         yc = - R0*np.sqrt( np.tan(theta_E*np.pi/180)**2 + 1)\
             / (np.tan(theta_E*np.pi/180)**2 + 1)
-    dataDir = "test_" + testType
+    else:
+        yc = R0 - 0.6*R0
+
+    dataDir = testType + "_CA" + str(theta_E)
     
     print("yc = ", yc)
     NSAC.dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn,
-                    We, Re, Pe, beta, initShape, testType, dataDir)
+                    We, Re, Pe, beta, bodyForceMag, initShape, testType, dataDir)
 
 runDropletSim()
