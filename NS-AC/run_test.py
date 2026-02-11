@@ -13,14 +13,14 @@ def runDropletSim():
     nx = 80
     ny = 60
     beta = 0.00000001
-    Pe = 1
+    Pe = 0.15
     Re = 0.1
     Cn = 0.05
     We = 1
     bodyForceMag = 0
     theta_E = 30
     initShape = "circle"
-    testType = "measureCA"
+    testType = "inc_Pe"
     xc = L_x/2
 
     if testType == "measureCA":
@@ -33,7 +33,7 @@ def runDropletSim():
     else:
         yc = R0 - 0.6*R0
 
-    dataDir = testType + "_CA" + str(theta_E)
+    dataDir = testType + "_Pe" + str(Pe) + "_Cn" + str(Cn) + "_We" + str(We) + "_Re" + str(Re) + "_CA" + str(theta_E)
     
     print("yc = ", yc)
     NSAC.dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn,

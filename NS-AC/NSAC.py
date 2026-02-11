@@ -206,7 +206,7 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     
     lin_form_mu =  (1/Cn)*( c_n*(c_n**2 - 1)*v*fe.dx\
         + Cn**2*fe.dot(fe.grad(c_n),fe.grad(v))*fe.dx\
-           - (1/(np.sqrt(2)*Cn) )*np.cos(theta)*(1 - c_n**2)*v*ds_bottom  )
+           - (Cn/(np.sqrt(2)) )*np.cos(theta)*(1 - c_n**2)*v*ds_bottom  )
     
     
     
@@ -286,7 +286,7 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
         t += dt
         
         if rank == 0:
-            if ctr % 10 == 0:
+            if ctr % 2000 == 0:
                 
                 if testType == "equil":
                     fn_pts = []
@@ -335,12 +335,10 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
                 #plt.show()
                 plt.close()
     
-            # if t >= ts[itc]:
-            #     cfile << (c_n, t)
-            #     mfile << (mu_n, t)
-            #     yfile << vel_star
-            #     pfile << p1
-            #     itc += 1
+                cfile << (c_n, t)
+                mfile << (mu_n, t)
+                yfile << vel_star
+                pfile << p1
     
 
 

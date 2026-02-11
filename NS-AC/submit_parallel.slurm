@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=MCA
-#SBATCH --output=MCA_out.log
-#SBATCH --error=MCA_err.log
+#SBATCH --job-name=Pe0.15
+#SBATCH --output=Pe0.15_out.log
+#SBATCH --error=Pe0.15_err.log
 #SBATCH --time=24:00:00
 
 #SBATCH --nodes=4
