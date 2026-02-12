@@ -14,6 +14,77 @@ import os
 import json
 #from ufl import min_value, max_value
 
+def computeContactAngle(c_n, h, Cn, mesh):
+    
+    V = c_n.function_space()
+    Vvec = fe.VectorFunctionSpace(mesh, "DG", 0)
+    grad_c_fn = fe.project(fe.grad(c_n), Vvec)
+    angles = []
+    n_vec = np.array([0.0, -1.0])
+    
+    barycenters = []
+    barycenter_vals = []
+    for cell in fe.cells(mesh):
+        
+        midpt = cell.midpoint().array()
+        midpt = tuple( (midpt[0], midpt[1]) )
+        barycenters.append( midpt )
+        barycenter_vals.append( c_n(midpt) )
+    
+    # Build dictionary
+    nodal_dict = {
+    tuple(coord): val
+    for coord, val in zip(barycenters, barycenter_vals)
+    }
+
+    
+    # Filter by y-coordinate
+    nodal_dict = {
+        coord: value
+        for coord, value in nodal_dict.items() 
+        if coord[1] < 3*h}
+    
+    # Filter by order parameter value
+    nodal_dict = {
+        coord: value
+        for coord, value in nodal_dict.items() 
+        if -2*Cn < value < 2*Cn}
+    
+    # Determine left-most interfacial point
+    min_x = min(coord[0] for coord in nodal_dict.keys())
+
+    # Filter points so we get rid of points near right CL
+    nodal_dict = {
+        coord: value
+        for coord, value in nodal_dict.items() 
+        if coord[0] > min_x + 3*Cn}
+    
+    iter = 0
+    for coord, value in nodal_dict.items():
+        iter += 1
+        print("coord is", coord)
+        grad_c = np.array(grad_c_fn(coord))
+        cos_theta = np.dot(grad_c, n_vec) / np.linalg.norm(grad_c)
+        angles.append( np.arccos(cos_theta))
+
+    print("Averaged over ", iter, " points")
+        
+    theta_avg = np.mean(angles)
+    theta_avg = theta_avg * 180 / np.pi
+    
+    return theta_avg
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+
 def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_param,
                Pe_param, beta_param, bodyForceMag, initShape, testType, dataDir):
     
@@ -330,6 +401,10 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
 
                 print("Max||u||:", max_vel, "\n\n", flush=True)
 
+
+                theta_avg = computeContactAngle(c_n, h, Cn, mesh)
+                
+                print("theta = ", theta_avg)
                 
                 
                 coords = mesh.coordinates()
