@@ -228,7 +228,7 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     mu_mat = fe.assemble(bilin_form_mu)
     
     solver = fe.NewtonSolver()
-    solver.parameters["linear_solver"] = "gmres"
+    solver.parameters["linear_solver"] = "cg"
     
     solver.parameters["convergence_criterion"] = "incremental"
     solver.parameters["relative_tolerance"] = 1e-7
@@ -237,10 +237,10 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     
     
     
-    mfile = fe.File(outDirName + "/Potential/result.pvd", "compressed")
-    cfile = fe.File(outDirName + "/Phasefield/result.pvd", "compressed")
-    yfile = fe.File(outDirName + "/Velocity/result.pvd", "compressed")
-    pfile = fe.File(outDirName + "/Pressure/result.pvd", "compressed")
+    mfile = fe.XDMFFile(outDirName + "/Potential/result.xdmf")
+    cfile = fe.XDMFFile(outDirName + "/Phasefield/result.xdmf")
+    yfile = fe.XDMFFile(outDirName + "/Velocity/result.xdmf")
+    pfile = fe.XDMFFile(outDirName + "/Pressure/result.xdmf")
     
     NS_mat = fe.assemble(NS_bilin)
     pres_update_mat = fe.assemble(pres_update_bilin)
@@ -266,14 +266,14 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
     
         NS_rhs_vec = fe.assemble(NS_lin)
         for bc in bcu: bc.apply(NS_mat, NS_rhs_vec)
-        fe.solve(NS_mat, vel_star.vector(), NS_rhs_vec, "gmres", prec)
+        fe.solve(NS_mat, vel_star.vector(), NS_rhs_vec, "cg", prec)
     
         pres_update_rhs_vec = fe.assemble(pres_update_lin)
-        fe.solve(pres_update_mat, p1.vector(), pres_update_rhs_vec, "gmres", prec)
+        fe.solve(pres_update_mat, p1.vector(), pres_update_rhs_vec, "cg", prec)
     
         vel_update_rhs_vec = fe.assemble(vel_update_lin)
         for bc in bcu: bc.apply(vel_update_mat, vel_update_rhs_vec)
-        fe.solve(vel_update_mat, vel_nP1.vector(), vel_update_rhs_vec, "gmres", prec)
+        fe.solve(vel_update_mat, vel_nP1.vector(), vel_update_rhs_vec, "cg", prec)
     
         c_n.assign(c_nP1)
         mu_n.assign(mu_nP1)
@@ -285,7 +285,7 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
         it += 1
         t += dt
         
-        if rank == 0:
+        if fe.MPI.rank(comm) == 0 and os.environ.get("SLURM_PROCID") == "0":
             if ctr % 2000 == 0:
                 
                 if testType == "equil":
@@ -308,11 +308,28 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
                 
                 
                 total_mass = mass_bulk
-                print("total mass is ", total_mass)
+                print("total mass is ", total_mass, flush=True)
                 #mass_diff = mass_bulk - mass_init 
-                print("mass diff is ", float(mass_diff) )
-                print("percent change in mass is ", 100*float(mass_diff)/mass_init)
-                print("max(phi) = ", c_n.vector().max(), "\n\n" )
+                print("mass diff is ", float(mass_diff), flush=True)
+                print("percent change in mass is ", 100*float(mass_diff)/mass_init, flush=True)
+                print("max(phi) = ", c_n.vector().max(), flush=True)
+
+                vel_vec = vel_n.vector().get_local()
+
+                # Determine spatial dimension
+                dim = vel_n.geometric_dimension()
+
+                # Reshape to (num_nodes, dim)
+                vel_vec = vel_vec.reshape((-1, dim))
+
+                # Compute nodal norms
+                vel_norm = np.linalg.norm(vel_vec, axis=1)
+
+                # Maximum nodal value
+                max_vel = vel_norm.max()
+
+                print("Max||u||:", max_vel, "\n\n", flush=True)
+
                 
                 
                 coords = mesh.coordinates()
@@ -335,10 +352,10 @@ def dropletSim(theta_E, L_x, L_y, xc, yc, nx, ny, R0, Cn_param, We_param, Re_par
                 #plt.show()
                 plt.close()
     
-                cfile << (c_n, t)
-                mfile << (mu_n, t)
-                yfile << vel_star
-                pfile << p1
+                cfile.write(c_n, t)
+                mfile.write(mu_n, t)
+                yfile.write(vel_star,t)
+                pfile.write(p1, t)
     
 
 

@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=Pe0.15
-#SBATCH --output=Pe0.15_out.log
-#SBATCH --error=Pe0.15_err.log
+#SBATCH --job-name=bodyForce
+#SBATCH --output=bodyForce_out.log
+#SBATCH --error=bodyForce_err.log
 #SBATCH --time=24:00:00
 
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=2    # MPI ranks per node (adjust)
+#SBATCH --nodes=10
+#SBATCH --ntasks-per-node=1   # MPI ranks per node (adjust)
 #SBATCH --cpus-per-task=1
 
 #SBATCH --partition=standard
