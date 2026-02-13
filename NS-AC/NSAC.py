@@ -48,7 +48,7 @@ def computeContactAngle(c_n, h, Cn, mesh):
     nodal_dict = {
         coord: value
         for coord, value in nodal_dict.items() 
-        if -2*Cn < value < 2*Cn}
+        if -0.2 < value < 0.2}
     
     # Determine left-most interfacial point
     min_x = min(coord[0] for coord in nodal_dict.keys())

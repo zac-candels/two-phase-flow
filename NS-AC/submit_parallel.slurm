@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=CA_fn
-#SBATCH --output=CA_fn_out.log
-#SBATCH --error=CA_fn_err.log
+#SBATCH --job-name=CA_fn120
+#SBATCH --output=CA_fn120_out.log
+#SBATCH --error=CA_fn120_err.log
 #SBATCH --time=24:00:00
 
 #SBATCH --nodes=10
