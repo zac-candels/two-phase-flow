@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=CA_fn120
-#SBATCH --output=CA_fn120_out.log
-#SBATCH --error=CA_fn120_err.log
+#SBATCH --job-name=CA_fn150
+#SBATCH --output=CA_fn150_out.log
+#SBATCH --error=CA_fn150_err.log
 #SBATCH --time=24:00:00
 
-#SBATCH --nodes=10
+#SBATCH --nodes=5
 #SBATCH --ntasks-per-node=1   # MPI ranks per node (adjust)
 #SBATCH --cpus-per-task=1
 

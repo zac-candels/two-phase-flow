@@ -18,7 +18,7 @@ def runDropletSim():
     Cn = 0.05
     We = 1
     bodyForceMag = 0
-    theta_E = 120
+    theta_E = 150
     initShape = "circle"
     testType = "measureCA"
     xc = L_x/2
